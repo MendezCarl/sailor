@@ -1,0 +1,44 @@
+# Collection: Posts API
+#
+# Run a request by name:
+#   apitool run "List Posts" --collection examples/posts-collection.yaml
+#   apitool run "Get Post"   --collection examples/posts-collection.yaml
+#   apitool run "Create Post" --collection examples/posts-collection.yaml
+#
+# Override base_url for a different environment:
+#   apitool run "List Posts" --collection examples/posts-collection.yaml \
+#     --var base_url=http://localhost:8080
+#
+# Pipe output:
+#   apitool run "List Posts" --collection examples/posts-collection.yaml \
+#     --raw | jq '.[0]'
+
+name: Posts API
+description: Requests for the JSONPlaceholder posts API
+base_url: "https://jsonplaceholder.typicode.com"
+
+requests:
+  - name: List Posts
+    method: GET
+    url: "${base_url}/posts"
+    headers:
+      Accept: "application/json"
+
+  - name: Get Post
+    method: GET
+    url: "${base_url}/posts/1"
+    headers:
+      Accept: "application/json"
+
+  - name: Create Post
+    method: POST
+    url: "${base_url}/posts"
+    headers:
+      Content-Type: "application/json"
+      Accept: "application/json"
+    body: |
+      {
+        "title": "${post_title}",
+        "body": "${post_body}",
+        "userId": 1
+      }

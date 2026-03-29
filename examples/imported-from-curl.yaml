@@ -1,0 +1,27 @@
+# Example: curl import/export workflow
+#
+# This file was produced by running:
+#   apitool import curl \
+#     'curl -X POST https://api.example.com/users \
+#       -H "Content-Type: application/json" \
+#       -H "Accept: application/json" \
+#       -d '"'"'{"name":"alice","email":"alice@example.com"}'"'"'' \
+#     --output examples/imported-from-curl.yaml
+#
+# To export it back to a curl command:
+#   apitool export curl -f examples/imported-from-curl.yaml
+#
+# Expected output:
+#   curl \
+#     --request POST \
+#     --url 'https://api.example.com/users' \
+#     --header 'Accept: application/json' \
+#     --header 'Content-Type: application/json' \
+#     --data '{"name":"alice","email":"alice@example.com"}'
+
+method: POST
+url: https://api.example.com/users
+headers:
+  Accept: application/json
+  Content-Type: application/json
+body: '{"name":"alice","email":"alice@example.com"}'

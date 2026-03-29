@@ -1,0 +1,16 @@
+# Single request file — uses ${base_url} from the .env file in this directory.
+# Run from the examples/ directory:
+#   apitool send -f demo.yaml
+#
+# Or override base_url inline:
+#   apitool send -f demo.yaml --var base_url=https://jsonplaceholder.typicode.com
+#
+# Pipe to jq:
+#   apitool send -f demo.yaml --raw | jq '.title'
+
+name: "Get Post"
+method: GET
+url: "${base_url}/posts/1"
+
+headers:
+  Accept: "application/json"

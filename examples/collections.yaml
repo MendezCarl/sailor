@@ -1,0 +1,53 @@
+# Collections example
+#
+# A collection groups related requests under a shared base_url.
+# Run a named request:
+#   apitool run "List Users" --collection examples/collections.yaml
+#   apitool run "Get User"   --collection examples/collections.yaml
+#   apitool run "Create User" --collection examples/collections.yaml
+#
+# Override base_url for a different environment:
+#   apitool run "List Users" --collection examples/collections.yaml \
+#     --var base_url=http://localhost:8080
+#
+# Set AUTH_TOKEN in an .env file or via --var:
+#   echo "AUTH_TOKEN=my-secret-token" > examples/.env
+#   apitool run "List Users" --collection examples/collections.yaml
+
+name: Users API
+description: Basic CRUD requests for a users resource
+base_url: "https://api.example.com"
+
+requests:
+  - name: List Users
+    method: GET
+    url: "${base_url}/users"
+    headers:
+      Accept: application/json
+      Authorization: "Bearer ${auth_token}"
+
+  - name: Get User
+    method: GET
+    url: "${base_url}/users/1"
+    headers:
+      Accept: application/json
+      Authorization: "Bearer ${auth_token}"
+
+  - name: Create User
+    method: POST
+    url: "${base_url}/users"
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+      Authorization: "Bearer ${auth_token}"
+    body: |
+      {
+        "name": "${user_name}",
+        "email": "${user_email}"
+      }
+
+  - name: Delete User
+    method: DELETE
+    url: "${base_url}/users/1"
+    headers:
+      Authorization: "Bearer ${auth_token}"
