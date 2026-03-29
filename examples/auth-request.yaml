@@ -5,10 +5,10 @@
 #   BASE_URL=https://api.example.com
 #
 # Then send:
-#   apitool send -f examples/auth-request.yaml
+#   sailor send -f examples/auth-request.yaml
 #
 # Or pass the token directly:
-#   apitool send -f examples/auth-request.yaml \
+#   sailor send -f examples/auth-request.yaml \
 #     --var base_url=https://api.example.com \
 #     --var auth_token=your-bearer-token-here
 

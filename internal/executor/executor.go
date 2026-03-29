@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/apitool/apitool/internal/request"
+	"github.com/MendezCarl/sailor.git/internal/request"
 )
 
 // NetworkError wraps errors that represent a failure to reach the server:

@@ -19,7 +19,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/apitool/apitool/internal/request"
+	"github.com/MendezCarl/sailor.git/internal/request"
 )
 
 // Vars is a map of variable name → value.

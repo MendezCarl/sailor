@@ -1,11 +1,11 @@
 # POST JSON request example
 #
 # Send this request:
-#   apitool send -f examples/post-json.yaml --var base_url=https://jsonplaceholder.typicode.com
+#   sailor send -f examples/post-json.yaml --var base_url=https://jsonplaceholder.typicode.com
 #
 # Or set base_url in an .env file in this directory:
 #   echo "BASE_URL=https://jsonplaceholder.typicode.com" > examples/.env
-#   apitool send -f examples/post-json.yaml
+#   sailor send -f examples/post-json.yaml
 
 name: Create Post
 method: POST

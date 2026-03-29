@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/apitool/apitool/internal/request"
+	"github.com/MendezCarl/sailor.git/internal/request"
 )
 
 // ---- helpers ----------------------------------------------------------------

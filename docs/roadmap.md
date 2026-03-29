@@ -1,6 +1,6 @@
 # Roadmap
 
-**Project:** (working title: api-testing-software)
+**Project:** Sailor
 **Last Updated:** 2026-03-28
 
 This document describes the project's development direction, milestone goals, and long-term constraints. It is a living document — priorities may shift as the project matures and the community grows — but the core constraints listed in Section 6 are permanent and are not subject to revision.
@@ -94,7 +94,7 @@ Establishes the YAML formats that will stabilize into v1.0. This is the most imp
 - [ ] Environment YAML format defined and documented (single and multi-environment)
 - [ ] `.env` file loading and variable interpolation
 - [ ] `${variable}` syntax fully implemented
-- [ ] `apitool run <name>` command for executing saved requests
+- [ ] `sailor run <name>` command for executing saved requests
 - [ ] Global and project-local storage resolution
 - [ ] `schema_version` field supported in all file types
 - [ ] Format specification documented in `docs/file-format.md`
@@ -109,8 +109,8 @@ Makes the collection workflow practical for day-to-day use.
 - [ ] Environment list and inspection commands
 - [ ] `--var` flag for per-invocation variable overrides
 - [ ] Warning on undefined variable references
-- [ ] cURL import: `apitool import curl`
-- [ ] cURL export: `apitool export curl <name>`
+- [ ] cURL import: `sailor import curl`
+- [ ] cURL export: `sailor export curl <name>`
 - [ ] Arm64 binary targets (Apple Silicon, Linux arm64)
 
 ### v0.4 — Response experience
@@ -218,15 +218,15 @@ GraphQL over HTTP is a POST request with a structured JSON body. The core execut
 
 - `graphql` block in the request YAML schema (query and variables)
 - GraphQL error detection and separate rendering in the response view
-- `apitool graphql introspect <url>` command for schema inspection
+- `sailor graphql introspect <url>` command for schema inspection
 
 GraphQL support is purely additive. Existing REST collections are unaffected.
 
 ### Priority 2 — WebSocket support (v1.2)
 
-WebSocket requires a different execution model than HTTP request/response. Implementation is a new `apitool ws` subcommand backed by a separate execution path:
+WebSocket requires a different execution model than HTTP request/response. Implementation is a new `sailor ws` subcommand backed by a separate execution path:
 
-- `apitool ws <url>` opens an interactive connection
+- `sailor ws <url>` opens an interactive connection
 - `--message` flag for single-send non-interactive mode
 - Streaming output for received frames
 - Saved WebSocket sessions in the collection YAML format
@@ -297,7 +297,7 @@ Performance targets are measured on:
 | v1.0 | Under 100ms cold start, regression test in CI | — |
 | Post-v1 | Maintain under 100ms as features are added | — |
 
-Startup time is measured from process invocation to first byte of output for a `apitool --version` command. This is the baseline that all feature work must not regress.
+Startup time is measured from process invocation to first byte of output for a `sailor --version` command. This is the baseline that all feature work must not regress.
 
 ### Binary size targets
 

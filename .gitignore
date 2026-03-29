@@ -1,1 +1,19 @@
+# Environment files — may contain secrets
 .env
+.env.local
+
+# Compiled binaries
+sailor
+sailor.exe
+
+# Cross-compiled release output (make build-all, make snapshot)
+dist/
+
+# macOS
+.DS_Store
+
+# Editor directories
+.idea/
+.vscode/
+*.swp
+*.swo

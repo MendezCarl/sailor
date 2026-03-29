@@ -7,7 +7,7 @@
 #   make clean           Remove build output
 
 # Binary name
-BIN := apitool
+BIN := sailor
 
 # Version metadata — override at build time or detect from git.
 VERSION  ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
@@ -39,6 +39,11 @@ build-all: clean
 ## test: run all tests
 test:
 	go test ./...
+
+## snapshot: build a release snapshot locally using GoReleaser (no publish)
+## Requires: goreleaser (https://goreleaser.com/install/)
+snapshot:
+	goreleaser release --snapshot --clean
 
 ## clean: remove compiled output
 clean:

@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/apitool/apitool/internal/request"
+	"github.com/MendezCarl/sailor.git/internal/request"
 	"gopkg.in/yaml.v3"
 )
 

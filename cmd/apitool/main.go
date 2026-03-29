@@ -8,13 +8,13 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/apitool/apitool/internal/collection"
-	"github.com/apitool/apitool/internal/config"
-	"github.com/apitool/apitool/internal/curl"
-	"github.com/apitool/apitool/internal/env"
-	"github.com/apitool/apitool/internal/executor"
-	"github.com/apitool/apitool/internal/render"
-	"github.com/apitool/apitool/internal/request"
+	"github.com/MendezCarl/sailor.git/internal/collection"
+	"github.com/MendezCarl/sailor.git/internal/config"
+	"github.com/MendezCarl/sailor.git/internal/curl"
+	"github.com/MendezCarl/sailor.git/internal/env"
+	"github.com/MendezCarl/sailor.git/internal/executor"
+	"github.com/MendezCarl/sailor.git/internal/render"
+	"github.com/MendezCarl/sailor.git/internal/request"
 	"gopkg.in/yaml.v3"
 )
 
@@ -40,8 +40,8 @@ const (
 
 func main() {
 	if len(os.Args) < 2 {
-		printUsage()
-		os.Exit(1)
+		printWelcome()
+		os.Exit(0)
 	}
 
 	cwd, err := os.Getwd()
@@ -66,12 +66,12 @@ func main() {
 	case "export":
 		os.Exit(runExport(os.Args[2:]))
 	case "version", "--version", "-v":
-		fmt.Fprintf(os.Stdout, "apitool %s (commit: %s, built: %s)\n", version, commit, buildDate)
+		fmt.Fprintf(os.Stdout, "sailor %s (commit: %s, built: %s)\n", version, commit, buildDate)
 	case "help", "--help", "-h":
-		printUsage()
+		printWelcome()
 	default:
 		fmt.Fprintf(os.Stderr, "error: unknown command %q\n\n", os.Args[1])
-		printUsage()
+		printWelcome()
 		os.Exit(1)
 	}
 }
@@ -186,19 +186,19 @@ func runSend(args []string, cfg *config.Config) int {
 	fs.Var(&vars, "var", "set a variable: key=value (repeatable)")
 
 	fs.Usage = func() {
-		fmt.Fprintln(os.Stderr, "Usage: apitool send -f <file> [flags]")
+		fmt.Fprintln(os.Stderr, "Usage: sailor send -f <file> [flags]")
 		fmt.Fprintln(os.Stderr)
 		fmt.Fprintln(os.Stderr, "Flags:")
 		fs.PrintDefaults()
 		fmt.Fprintln(os.Stderr)
 		fmt.Fprintln(os.Stderr, "Examples:")
-		fmt.Fprintln(os.Stderr, "  apitool send -f examples/demo.yaml")
-		fmt.Fprintln(os.Stderr, "  apitool send -f examples/demo.yaml --headers")
-		fmt.Fprintln(os.Stderr, "  apitool send -f examples/demo.yaml --timeout 60s")
-		fmt.Fprintln(os.Stderr, "  apitool send -f examples/demo.yaml --var base_url=http://localhost:8080")
-		fmt.Fprintln(os.Stderr, "  apitool send -f examples/demo.yaml --raw | jq '.title'")
-		fmt.Fprintln(os.Stderr, "  apitool send -f examples/demo.yaml --json | jq '.status_code'")
-		fmt.Fprintln(os.Stderr, "  apitool send -f examples/demo.yaml --fail-on-error && echo ok")
+		fmt.Fprintln(os.Stderr, "  sailor send -f examples/demo.yaml")
+		fmt.Fprintln(os.Stderr, "  sailor send -f examples/demo.yaml --headers")
+		fmt.Fprintln(os.Stderr, "  sailor send -f examples/demo.yaml --timeout 60s")
+		fmt.Fprintln(os.Stderr, "  sailor send -f examples/demo.yaml --var base_url=http://localhost:8080")
+		fmt.Fprintln(os.Stderr, "  sailor send -f examples/demo.yaml --raw | jq '.title'")
+		fmt.Fprintln(os.Stderr, "  sailor send -f examples/demo.yaml --json | jq '.status_code'")
+		fmt.Fprintln(os.Stderr, "  sailor send -f examples/demo.yaml --fail-on-error && echo ok")
 	}
 
 	if err := fs.Parse(args); err != nil {
@@ -256,19 +256,19 @@ func runRun(args []string, cfg *config.Config) int {
 	fs.Var(&vars, "var", "set a variable: key=value (repeatable)")
 
 	fs.Usage = func() {
-		fmt.Fprintln(os.Stderr, "Usage: apitool run <request-name> [flags]")
+		fmt.Fprintln(os.Stderr, "Usage: sailor run <request-name> [flags]")
 		fmt.Fprintln(os.Stderr)
 		fmt.Fprintln(os.Stderr, "Flags:")
 		fs.PrintDefaults()
 		fmt.Fprintln(os.Stderr)
 		fmt.Fprintln(os.Stderr, "Examples:")
-		fmt.Fprintln(os.Stderr, "  apitool run \"List Posts\" --collection examples/posts-collection.yaml")
-		fmt.Fprintln(os.Stderr, "  apitool run \"Get Post\" --collection examples/posts-collection.yaml --headers")
-		fmt.Fprintln(os.Stderr, "  apitool run \"List Posts\" --timeout 60s")
-		fmt.Fprintln(os.Stderr, "  apitool run \"List Posts\" --var base_url=http://localhost:8080")
-		fmt.Fprintln(os.Stderr, "  apitool run \"List Posts\" --raw | jq '.[0].title'")
-		fmt.Fprintln(os.Stderr, "  apitool run \"List Posts\" --json | jq '.status_code'")
-		fmt.Fprintln(os.Stderr, "  apitool run \"List Posts\" --fail-on-error && echo ok")
+		fmt.Fprintln(os.Stderr, "  sailor run \"List Posts\" --collection examples/posts-collection.yaml")
+		fmt.Fprintln(os.Stderr, "  sailor run \"Get Post\" --collection examples/posts-collection.yaml --headers")
+		fmt.Fprintln(os.Stderr, "  sailor run \"List Posts\" --timeout 60s")
+		fmt.Fprintln(os.Stderr, "  sailor run \"List Posts\" --var base_url=http://localhost:8080")
+		fmt.Fprintln(os.Stderr, "  sailor run \"List Posts\" --raw | jq '.[0].title'")
+		fmt.Fprintln(os.Stderr, "  sailor run \"List Posts\" --json | jq '.status_code'")
+		fmt.Fprintln(os.Stderr, "  sailor run \"List Posts\" --fail-on-error && echo ok")
 		fmt.Fprintln(os.Stderr)
 		fmt.Fprintln(os.Stderr, "Without --collection, searches .apitool/collections/*.yaml in the current directory.")
 	}
@@ -388,12 +388,12 @@ func buildOpts(cfg *config.Config, raw, quiet, jsonOutput, showHeaders bool) ren
 // runImport dispatches `apitool import <format> ...`.
 func runImport(args []string) int {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" {
-		fmt.Fprintln(os.Stderr, "Usage: apitool import <format> [args]")
+		fmt.Fprintln(os.Stderr, "Usage: sailor import <format> [args]")
 		fmt.Fprintln(os.Stderr)
 		fmt.Fprintln(os.Stderr, "Formats:")
 		fmt.Fprintln(os.Stderr, "  curl   Import a curl command")
 		fmt.Fprintln(os.Stderr)
-		fmt.Fprintln(os.Stderr, "Run 'apitool import <format> --help' for format-specific usage.")
+		fmt.Fprintln(os.Stderr, "Run 'sailor import <format> --help' for format-specific usage.")
 		if len(args) == 0 {
 			return 1
 		}
@@ -418,7 +418,7 @@ func runImportCurl(args []string) int {
 	fs.StringVar(&outputFile, "output", "", "write YAML to this file instead of stdout")
 
 	fs.Usage = func() {
-		fmt.Fprintln(os.Stderr, "Usage: apitool import curl \"<curl command>\" [flags]")
+		fmt.Fprintln(os.Stderr, "Usage: sailor import curl \"<curl command>\" [flags]")
 		fmt.Fprintln(os.Stderr)
 		fmt.Fprintln(os.Stderr, "Parses a curl command and prints the equivalent request YAML.")
 		fmt.Fprintln(os.Stderr)
@@ -426,9 +426,9 @@ func runImportCurl(args []string) int {
 		fs.PrintDefaults()
 		fmt.Fprintln(os.Stderr)
 		fmt.Fprintln(os.Stderr, "Examples:")
-		fmt.Fprintln(os.Stderr, "  apitool import curl 'curl https://api.example.com/users'")
-		fmt.Fprintln(os.Stderr, `  apitool import curl 'curl -X POST https://api.example.com/users -H "Content-Type: application/json" -d '"'"'{"name":"alice"}'"'"''`)
-		fmt.Fprintln(os.Stderr, "  apitool import curl 'curl https://api.example.com/users' --output request.yaml")
+		fmt.Fprintln(os.Stderr, "  sailor import curl 'curl https://api.example.com/users'")
+		fmt.Fprintln(os.Stderr, `  sailor import curl 'curl -X POST https://api.example.com/users -H "Content-Type: application/json" -d '"'"'{"name":"alice"}'"'"''`)
+		fmt.Fprintln(os.Stderr, "  sailor import curl 'curl https://api.example.com/users' --output request.yaml")
 	}
 
 	// Extract positional curl string before flag parsing (it may contain
@@ -488,12 +488,12 @@ func runImportCurl(args []string) int {
 // runExport dispatches `apitool export <format> ...`.
 func runExport(args []string) int {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" {
-		fmt.Fprintln(os.Stderr, "Usage: apitool export <format> [args]")
+		fmt.Fprintln(os.Stderr, "Usage: sailor export <format> [args]")
 		fmt.Fprintln(os.Stderr)
 		fmt.Fprintln(os.Stderr, "Formats:")
 		fmt.Fprintln(os.Stderr, "  curl   Export a request as a curl command")
 		fmt.Fprintln(os.Stderr)
-		fmt.Fprintln(os.Stderr, "Run 'apitool export <format> --help' for format-specific usage.")
+		fmt.Fprintln(os.Stderr, "Run 'sailor export <format> --help' for format-specific usage.")
 		if len(args) == 0 {
 			return 1
 		}
@@ -524,7 +524,7 @@ func runExportCurl(args []string) int {
 	fs.StringVar(&collectionFile, "collection", "", "path to a collection YAML file")
 
 	fs.Usage = func() {
-		fmt.Fprintln(os.Stderr, "Usage: apitool export curl [flags] [request-name]")
+		fmt.Fprintln(os.Stderr, "Usage: sailor export curl [flags] [request-name]")
 		fmt.Fprintln(os.Stderr)
 		fmt.Fprintln(os.Stderr, "Converts a saved request to a curl command and prints it to stdout.")
 		fmt.Fprintln(os.Stderr)
@@ -532,8 +532,8 @@ func runExportCurl(args []string) int {
 		fs.PrintDefaults()
 		fmt.Fprintln(os.Stderr)
 		fmt.Fprintln(os.Stderr, "Examples:")
-		fmt.Fprintln(os.Stderr, "  apitool export curl -f examples/demo.yaml")
-		fmt.Fprintln(os.Stderr, `  apitool export curl --collection examples/posts-collection.yaml "Get Post"`)
+		fmt.Fprintln(os.Stderr, "  sailor export curl -f examples/demo.yaml")
+		fmt.Fprintln(os.Stderr, `  sailor export curl --collection examples/posts-collection.yaml "Get Post"`)
 	}
 
 	// Extract a positional request name before parsing flags.
@@ -622,18 +622,18 @@ func hasPrefix(s, prefix string) bool {
 	return len(s) >= len(prefix) && s[:len(prefix)] == prefix
 }
 
-func printUsage() {
-	fmt.Fprintln(os.Stderr, "apitool — a lightweight CLI API client")
-	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, "Usage: apitool <command> [flags]")
-	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, "Commands:")
-	fmt.Fprintln(os.Stderr, "  send         Send an HTTP request from a YAML file")
-	fmt.Fprintln(os.Stderr, "  run          Run a named request from a collection")
-	fmt.Fprintln(os.Stderr, "  import curl  Import a curl command as a request YAML")
-	fmt.Fprintln(os.Stderr, "  export curl  Export a request as a curl command")
-	fmt.Fprintln(os.Stderr, "  version      Print version and exit")
-	fmt.Fprintln(os.Stderr, "  help         Show this message")
-	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, "Run 'apitool <command> --help' for command-specific usage.")
+func printWelcome() {
+	fmt.Fprintln(os.Stdout, "Welcome to Sailor — a lightweight CLI API client.")
+	fmt.Fprintln(os.Stdout)
+	fmt.Fprintln(os.Stdout, "Usage: sailor <command> [flags]")
+	fmt.Fprintln(os.Stdout)
+	fmt.Fprintln(os.Stdout, "Commands:")
+	fmt.Fprintln(os.Stdout, "  send         Send an HTTP request from a YAML file")
+	fmt.Fprintln(os.Stdout, "  run          Run a named request from a collection")
+	fmt.Fprintln(os.Stdout, "  import curl  Import a curl command as a request YAML")
+	fmt.Fprintln(os.Stdout, "  export curl  Export a request as a curl command")
+	fmt.Fprintln(os.Stdout, "  version      Print version and exit")
+	fmt.Fprintln(os.Stdout, "  help         Show this message")
+	fmt.Fprintln(os.Stdout)
+	fmt.Fprintln(os.Stdout, "Run 'sailor <command> --help' for command-specific usage.")
 }

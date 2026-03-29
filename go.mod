@@ -1,4 +1,4 @@
-module github.com/apitool/apitool
+module github.com/MendezCarl/sailor.git
 
 go 1.22
 

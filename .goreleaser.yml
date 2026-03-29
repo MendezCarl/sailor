@@ -1,0 +1,128 @@
+# GoReleaser configuration for Sailor.
+# Docs: https://goreleaser.com/customization/
+#
+# To test a release locally (no publish):
+#   goreleaser release --snapshot --clean
+#
+# Or via make:
+#   make snapshot
+version: 2
+
+project_name: sailor
+
+before:
+  hooks:
+    - go mod tidy
+    - go test ./...
+
+# ---------------------------------------------------------------------------
+# Builds
+# ---------------------------------------------------------------------------
+builds:
+  - id: sailor
+    main: ./cmd/apitool
+    binary: sailor
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    # Windows arm64 is rare; skip it to keep the release matrix small.
+    ignore:
+      - goos: windows
+        goarch: arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.buildDate={{.Date}}
+
+# ---------------------------------------------------------------------------
+# Archives
+# ---------------------------------------------------------------------------
+archives:
+  - id: sailor
+    # sailor_0.1.0_linux_amd64.tar.gz, sailor_0.1.0_windows_amd64.zip, etc.
+    name_template: "sailor_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - README.md
+
+# ---------------------------------------------------------------------------
+# Checksums
+# ---------------------------------------------------------------------------
+checksum:
+  name_template: "sailor_{{ .Version }}_checksums.txt"
+  algorithm: sha256
+
+# ---------------------------------------------------------------------------
+# Changelog (auto-generated from commit messages)
+# ---------------------------------------------------------------------------
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "Merge pull request"
+      - "Merge branch"
+
+# ---------------------------------------------------------------------------
+# GitHub Release
+# ---------------------------------------------------------------------------
+release:
+  draft: false
+  # Mark as pre-release automatically for versions like v0.x.x or v1.0.0-rc1.
+  prerelease: auto
+  name_template: "v{{ .Version }}"
+  footer: |
+    ## Installation
+
+    **Homebrew**
+    ```sh
+    brew install MendezCarl/sailor/sailor
+    ```
+
+    **Direct download**
+    Download the binary for your platform from the assets below, extract it, and place `sailor` somewhere on your `$PATH`.
+
+    **Build from source**
+    ```sh
+    go install github.com/MendezCarl/sailor.git/cmd/apitool@v{{ .Version }}
+    ```
+
+# ---------------------------------------------------------------------------
+# Homebrew Tap
+#
+# Prerequisites:
+#   1. Create a GitHub repo named `homebrew-sailor` under your account/org.
+#   2. Add a secret named HOMEBREW_TAP_TOKEN to this repo (a GitHub personal
+#      access token with `repo` scope for the homebrew-sailor repo).
+#
+# After a release, GoReleaser will open a PR (or push directly) to
+# homebrew-sailor updating the formula with the new version and checksums.
+# ---------------------------------------------------------------------------
+brews:
+  - name: sailor
+    repository:
+      owner: "{{ .Env.GITHUB_REPOSITORY_OWNER }}"
+      name: homebrew-sailor
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    commit_author:
+      name: goreleaserbot
+      email: bot@goreleaser.com
+    commit_message_template: "Brew formula update for sailor {{ .Tag }}"
+    homepage: "https://github.com/{{ .Env.GITHUB_REPOSITORY_OWNER }}/sailor"
+    description: "A lightweight, local-first CLI API client. No accounts, no cloud, no bloat."
+    license: "MIT"
+    install: |
+      bin.install "sailor"
+    test: |
+      system "#{bin}/sailor", "version"

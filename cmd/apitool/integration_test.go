@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/apitool/apitool/internal/config"
+	"github.com/MendezCarl/sailor.git/internal/config"
 )
 
 // captureOutput redirects os.Stdout and os.Stderr, runs fn, then restores them.

@@ -1,16 +1,16 @@
 # Collection: Posts API
 #
 # Run a request by name:
-#   apitool run "List Posts" --collection examples/posts-collection.yaml
-#   apitool run "Get Post"   --collection examples/posts-collection.yaml
-#   apitool run "Create Post" --collection examples/posts-collection.yaml
+#   sailor run "List Posts" --collection examples/posts-collection.yaml
+#   sailor run "Get Post"   --collection examples/posts-collection.yaml
+#   sailor run "Create Post" --collection examples/posts-collection.yaml
 #
 # Override base_url for a different environment:
-#   apitool run "List Posts" --collection examples/posts-collection.yaml \
+#   sailor run "List Posts" --collection examples/posts-collection.yaml \
 #     --var base_url=http://localhost:8080
 #
 # Pipe output:
-#   apitool run "List Posts" --collection examples/posts-collection.yaml \
+#   sailor run "List Posts" --collection examples/posts-collection.yaml \
 #     --raw | jq '.[0]'
 
 name: Posts API

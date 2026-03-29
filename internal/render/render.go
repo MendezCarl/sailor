@@ -20,7 +20,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/apitool/apitool/internal/request"
+	"github.com/MendezCarl/sailor.git/internal/request"
 )
 
 // ANSI color codes. Applied only when the diagnostic writer is a TTY.

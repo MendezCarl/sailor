@@ -1,7 +1,7 @@
 # Example: curl import/export workflow
 #
 # This file was produced by running:
-#   apitool import curl \
+#   sailor import curl \
 #     'curl -X POST https://api.example.com/users \
 #       -H "Content-Type: application/json" \
 #       -H "Accept: application/json" \
@@ -9,7 +9,7 @@
 #     --output examples/imported-from-curl.yaml
 #
 # To export it back to a curl command:
-#   apitool export curl -f examples/imported-from-curl.yaml
+#   sailor export curl -f examples/imported-from-curl.yaml
 #
 # Expected output:
 #   curl \

@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/apitool/apitool/internal/request"
+	"github.com/MendezCarl/sailor.git/internal/request"
 )
 
 // Export serializes a Request to a curl command string.

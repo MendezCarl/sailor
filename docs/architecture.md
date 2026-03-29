@@ -1,6 +1,6 @@
 # Architecture
 
-**Project:** (working title: api-testing-software)
+**Project:** Sailor
 **Version:** 0.1 — MVP
 **Status:** Draft
 **Last Updated:** 2026-03-28
@@ -118,29 +118,29 @@ The CLI supports two distinct usage patterns:
 
 ```sh
 # GET request
-apitool get https://api.example.com/users
+sailor get https://api.example.com/users
 
 # POST with a JSON body
-apitool post https://api.example.com/users --json '{"name": "alice"}'
+sailor post https://api.example.com/users --json '{"name": "alice"}'
 
 # POST with a body from a file
-apitool post https://api.example.com/users --body ./payload.json
+sailor post https://api.example.com/users --body ./payload.json
 
 # With explicit headers
-apitool get https://api.example.com/users -H "Authorization: Bearer $TOKEN"
+sailor get https://api.example.com/users -H "Authorization: Bearer $TOKEN"
 ```
 
 **Collection-based workflow** — Execute named requests from a saved local collection:
 
 ```sh
 # Run a named request from the current project's collection
-apitool run users.list
+sailor run users.list
 
 # Run with a specific environment
-apitool run users.list --env staging
+sailor run users.list --env staging
 
 # Run with a variable override
-apitool run users.create --var name=alice
+sailor run users.create --var name=alice
 ```
 
 Both workflows produce identical output. The collection workflow is syntactic sugar over the same request execution pipeline — a named YAML file is loaded and resolved into the same internal request structure that a one-off command produces directly.
@@ -150,7 +150,7 @@ Both workflows produce identical output. The collection workflow is syntactic su
 Commands follow a flat verb-noun pattern. Subcommands are avoided where a simple flag achieves the same result. The command surface should be learnable in a single session.
 
 ```
-apitool <verb> [target] [flags]
+sailor <verb> [target] [flags]
 
 Verbs:
   get, post, put, patch, delete, head     HTTP method shortcuts
@@ -166,7 +166,7 @@ Verbs:
 
 The CLI must behave as a well-behaved Unix tool:
 
-- **Stdout for data, stderr for diagnostics.** Response body goes to stdout. Status messages, warnings, and progress indicators go to stderr. This allows `apitool get ... | jq` to work without noise.
+- **Stdout for data, stderr for diagnostics.** Response body goes to stdout. Status messages, warnings, and progress indicators go to stderr. This allows `sailor get ... | jq` to work without noise.
 - **`--raw` flag.** Disables formatting, syntax highlighting, and all decorations. Outputs the raw response body only.
 - **`--json` flag on meta-commands.** Commands like `collection list` and `env list` should support `--json` to produce machine-readable output.
 - **Exit codes.** Described in full in Section 6. Tool errors are non-zero. HTTP responses are zero unless `--fail-on-error` is set.
@@ -275,10 +275,10 @@ This section describes what happens between the user pressing enter and output a
 
 The tool uses two storage locations:
 
-**User-global storage** (`~/.config/apitool/` on Linux/macOS, `%APPDATA%\apitool\` on Windows):
+**User-global storage** (`~/.config/sailor/` on Linux/macOS, `%APPDATA%\sailor\` on Windows):
 
 ```
-~/.config/apitool/
+~/.config/sailor/
   config.yaml           Global user config (timeout, default env, output prefs)
   envs/
     default.yaml        Default environment variables
@@ -322,7 +322,7 @@ collections/
     login.yaml      → auth.login
 ```
 
-The `run` command uses this dot notation: `apitool run users.list`. The tool resolves the name to a file path by replacing dots with directory separators and appending `.yaml`.
+The `run` command uses this dot notation: `sailor run users.list`. The tool resolves the name to a file path by replacing dots with directory separators and appending `.yaml`.
 
 ---
 
@@ -413,7 +413,7 @@ Configuration is resolved through a two-level merge. Project config overrides gl
 ### 9.1 Resolution Order
 
 ```
-Global config   (~/.config/apitool/config.yaml)
+Global config   (~/.config/sailor/config.yaml)
       +
 Project config  (.apitool/config.yaml, if present)
       =
@@ -427,17 +427,17 @@ The merge is shallow: any key present in the project config replaces the corresp
 When an environment is requested (via `--env` flag or `default_env` config key), it is resolved in this order:
 
 1. Project-local environment file: `.apitool/envs/<name>.yaml`
-2. Global environment file: `~/.config/apitool/envs/<name>.yaml`
+2. Global environment file: `~/.config/sailor/envs/<name>.yaml`
 3. Error if neither exists
 
 This allows a project to define its own `staging` environment that overrides or supplements a global one.
 
 ### 9.3 Collection Resolution Order
 
-When a named request is referenced (via `apitool run <name>`):
+When a named request is referenced (via `sailor run <name>`):
 
 1. Project-local collection: `.apitool/collections/<name>.yaml`
-2. Global collection: `~/.config/apitool/collections/<name>.yaml`
+2. Global collection: `~/.config/sailor/collections/<name>.yaml`
 3. Error if neither exists
 
 ### 9.4 Recommended Git Workflow
@@ -570,13 +570,13 @@ Variable references (`{{base_url}}`) in the `Request` struct are preserved as-is
 
 ```sh
 # From a string
-apitool import curl "curl -X POST https://api.example.com/users -H 'Content-Type: application/json' -d '{\"name\":\"alice\"}'"
+sailor import curl "curl -X POST https://api.example.com/users -H 'Content-Type: application/json' -d '{\"name\":\"alice\"}'"
 
 # From a file containing a cURL command
-apitool import curl --file ./curl-command.txt
+sailor import curl --file ./curl-command.txt
 
 # Import and immediately save to collection
-apitool import curl "..." --save users.create
+sailor import curl "..." --save users.create
 ```
 
 When `--save` is not provided, the imported request is printed to stdout as a YAML request file. The user can inspect and save it manually.
@@ -593,13 +593,13 @@ GraphQL over HTTP is mechanically a POST request with a JSON body containing `qu
 
 - **Request file schema extension:** A `graphql` block in the YAML schema that holds the query and variables separately, rendered as a JSON body at execution time.
 - **Response rendering:** GraphQL responses contain an `errors` array at the top level. The renderer should detect and highlight these separately from HTTP errors.
-- **Introspection shortcut:** A `apitool graphql introspect <url>` command to fetch and display a schema.
+- **Introspection shortcut:** A `sailor graphql introspect <url>` command to fetch and display a schema.
 
 The `executor` package requires no changes for GraphQL. The `render` package requires a GraphQL-aware response detector. The `collection` package requires schema support for the `graphql` block.
 
 ### 12.2 WebSocket
 
-WebSocket support requires a persistent connection model that is architecturally different from the request/response model used for HTTP. It should be implemented as a distinct subcommand (`apitool ws <url>`) backed by a separate execution path, not grafted onto the existing `executor` package.
+WebSocket support requires a persistent connection model that is architecturally different from the request/response model used for HTTP. It should be implemented as a distinct subcommand (`sailor ws <url>`) backed by a separate execution path, not grafted onto the existing `executor` package.
 
 Key extension points:
 
@@ -675,9 +675,9 @@ The tool uses platform-appropriate directories via Go's `os.UserConfigDir()` and
 
 | Platform | Config directory |
 |---|---|
-| Linux | `~/.config/apitool/` |
-| macOS | `~/Library/Application Support/apitool/` |
-| Windows | `%APPDATA%\apitool\` |
+| Linux | `~/.config/sailor/` |
+| macOS | `~/Library/Application Support/sailor/` |
+| Windows | `%APPDATA%\sailor\` |
 
 The tool does not hardcode `~/.config` on any platform.
 
@@ -702,11 +702,11 @@ The tool does not invoke a shell. It does not call `exec.Command("sh", "-c", ...
 CI must build and test on all three platforms. The release pipeline produces the following binary targets as a minimum:
 
 ```
-apitool-linux-amd64
-apitool-linux-arm64
-apitool-darwin-amd64
-apitool-darwin-arm64
-apitool-windows-amd64.exe
+sailor-linux-amd64
+sailor-linux-arm64
+sailor-darwin-amd64
+sailor-darwin-arm64
+sailor-windows-amd64.exe
 ```
 
 ---

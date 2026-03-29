@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/apitool/apitool/internal/request"
+	"github.com/MendezCarl/sailor.git/internal/request"
 )
 
 func TestExport_SimpleGET(t *testing.T) {

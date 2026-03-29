@@ -12,7 +12,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/apitool/apitool/internal/request"
+	"github.com/MendezCarl/sailor.git/internal/request"
 )
 
 // Parse converts a curl command string into a Request.
