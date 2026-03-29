@@ -87,7 +87,7 @@ release:
 
     **Homebrew**
     ```sh
-    brew install MendezCarl/sailor/sailor
+    brew install --cask MendezCarl/sailor/sailor
     ```
 
     **Direct download**
@@ -106,23 +106,17 @@ release:
 #   2. Add a secret named HOMEBREW_TAP_TOKEN to this repo (a GitHub personal
 #      access token with `repo` scope for the homebrew-sailor repo).
 #
-# After a release, GoReleaser will open a PR (or push directly) to
-# homebrew-sailor updating the formula with the new version and checksums.
+# After a release, GoReleaser will push the updated cask to homebrew-sailor.
+# Users install with: brew install --cask MendezCarl/sailor/sailor
 # ---------------------------------------------------------------------------
-brews:
+homebrew_casks:
   - name: sailor
     repository:
-      owner: "{{ .Env.GITHUB_REPOSITORY_OWNER }}"
+      owner: "MendezCarl"
       name: homebrew-sailor
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
     commit_author:
       name: goreleaserbot
       email: bot@goreleaser.com
-    commit_message_template: "Brew formula update for sailor {{ .Tag }}"
-    homepage: "https://github.com/{{ .Env.GITHUB_REPOSITORY_OWNER }}/sailor"
+    homepage: "https://github.com/MendezCarl/sailor"
     description: "A lightweight, local-first CLI API client. No accounts, no cloud, no bloat."
-    license: "MIT"
-    install: |
-      bin.install "sailor"
-    test: |
-      system "#{bin}/sailor", "version"

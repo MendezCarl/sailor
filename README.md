@@ -56,7 +56,8 @@ Sailor is written in Go and compiles to a single static binary.
 **Homebrew (macOS and Linux)**
 
 ```sh
-brew install sailor
+brew tap MendezCarl/sailor
+brew install --cask sailor
 ```
 
 **Download a binary**
