@@ -301,6 +301,81 @@ func Interpolate(s string, vars Vars) (string, []string) {
 	return result.String(), undefined
 }
 
+// EnvEntry describes one discoverable environment.
+type EnvEntry struct {
+	Name   string // environment name
+	Source string // file path it was found in
+	Multi  bool   // true if sourced from a multi-environment file
+}
+
+// ListEnvs returns all environments discoverable from cwd.
+// It scans the project-local directory (.apitool/envs/) and the global
+// directory (~/.config/apitool/envs/).
+//
+// Single-env yaml files (e.g. staging.yaml) contribute one entry whose name
+// is the filename without the .yaml extension.
+// Multi-env files (environments.yaml) contribute one entry per named environment.
+// environments.yaml is always treated as multi-env; other *.yaml files are
+// treated as single-env.
+func ListEnvs(cwd string) ([]EnvEntry, error) {
+	home, _ := os.UserHomeDir()
+
+	dirs := []string{filepath.Join(cwd, ".apitool", "envs")}
+	if home != "" {
+		dirs = append(dirs, filepath.Join(home, ".config", "apitool", "envs"))
+	}
+
+	seen := map[string]bool{}
+	var entries []EnvEntry
+
+	for _, dir := range dirs {
+		if _, err := os.Stat(dir); os.IsNotExist(err) {
+			continue
+		}
+
+		files, err := filepath.Glob(filepath.Join(dir, "*.yaml"))
+		if err != nil {
+			return nil, fmt.Errorf("listing envs in %s: %w", dir, err)
+		}
+
+		for _, path := range files {
+			base := filepath.Base(path)
+
+			if base == "environments.yaml" {
+				// Multi-env file: extract environment names.
+				data, err := os.ReadFile(path)
+				if err != nil {
+					continue
+				}
+				var probe envFileProbe
+				if err := yaml.Unmarshal(data, &probe); err != nil {
+					continue
+				}
+				for name := range probe.Environments {
+					key := name + "|" + path
+					if seen[key] {
+						continue
+					}
+					seen[key] = true
+					entries = append(entries, EnvEntry{Name: name, Source: path, Multi: true})
+				}
+				continue
+			}
+
+			// Single-env file: name is filename without extension.
+			name := strings.TrimSuffix(base, ".yaml")
+			key := name + "|" + path
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
+			entries = append(entries, EnvEntry{Name: name, Source: path, Multi: false})
+		}
+	}
+
+	return entries, nil
+}
+
 // ParseVarFlag parses a "key=value" string from a --var flag.
 func ParseVarFlag(s string) (string, string, error) {
 	idx := strings.IndexByte(s, '=')

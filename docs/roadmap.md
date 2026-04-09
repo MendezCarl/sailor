@@ -103,15 +103,15 @@ Establishes the YAML formats that will stabilize into v1.0. This is the most imp
 
 Makes the collection workflow practical for day-to-day use.
 
-- [ ] Folder and group organization in collections
-- [ ] `collection list` command
-- [ ] `collection show <name>` command
-- [ ] Environment list and inspection commands
-- [ ] `--var` flag for per-invocation variable overrides
-- [ ] Warning on undefined variable references
-- [ ] cURL import: `sailor import curl`
-- [ ] cURL export: `sailor export curl <name>`
-- [ ] Arm64 binary targets (Apple Silicon, Linux arm64)
+- [x] Folder and group organization in collections
+- [x] `collection list` command
+- [x] `collection show <name>` command
+- [x] Environment list and inspection commands
+- [x] `--var` flag for per-invocation variable overrides
+- [x] Warning on undefined variable references
+- [x] cURL import: `sailor import curl`
+- [x] cURL export: `sailor export curl <name>`
+- [x] Arm64 binary targets (Apple Silicon, Linux arm64)
 
 ### v0.4 — Response experience
 
