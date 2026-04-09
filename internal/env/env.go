@@ -5,8 +5,10 @@
 //  1. CLI --var flags
 //  2. OS environment variables
 //  3. .env.local in the search directory
-//  4. .env in the search directory
-//  5. Base vars (e.g. collection base_url field)
+//  4. .env.<envName> in the search directory (only when an env is active)
+//  5. .env in the search directory
+//  6. Active environment YAML file (.apitool/envs/)
+//  7. Base vars (e.g. collection base_url field)
 //
 // All keys are normalised to lowercase so that ${auth_token} in a request
 // resolves AUTH_TOKEN from a .env file without any extra configuration.
@@ -17,9 +19,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/MendezCarl/sailor.git/internal/request"
+	"gopkg.in/yaml.v3"
 )
 
 // Vars is a map of variable name → value.
@@ -73,9 +77,11 @@ func LoadDotEnv(path string) (Vars, error) {
 }
 
 // Collect builds a merged Vars from all sources for a given directory.
-// dir is where .env and .env.local are looked up (typically the directory
-// containing the request file or collection being executed).
-func Collect(dir string, baseVars Vars, cliVars Vars) (Vars, error) {
+// dir is where .env files are looked up (typically the directory containing
+// the request file or collection being executed).
+// envFilePath and envName identify an optional active environment YAML file;
+// pass empty strings to skip that layer.
+func Collect(dir string, baseVars Vars, cliVars Vars, envFilePath string, envName string) (Vars, error) {
 	result := Vars{}
 
 	// 1. Base vars (lowest priority — e.g. collection.base_url).
@@ -83,7 +89,18 @@ func Collect(dir string, baseVars Vars, cliVars Vars) (Vars, error) {
 		result[strings.ToLower(k)] = v
 	}
 
-	// 2. .env file.
+	// 2. Environment YAML file (above base, below .env files).
+	if envFilePath != "" {
+		envVars, err := LoadEnvFile(envFilePath, envName)
+		if err != nil {
+			return nil, err
+		}
+		for k, v := range envVars {
+			result[k] = v
+		}
+	}
+
+	// 3. .env file.
 	dotenv, err := LoadDotEnv(filepath.Join(dir, ".env"))
 	if err != nil {
 		return nil, err
@@ -92,7 +109,18 @@ func Collect(dir string, baseVars Vars, cliVars Vars) (Vars, error) {
 		result[k] = v
 	}
 
-	// 3. .env.local (overrides .env).
+	// 4. .env.<envName> (environment-specific overlay, only when env is active).
+	if envName != "" {
+		envDot, err := LoadDotEnv(filepath.Join(dir, ".env."+envName))
+		if err != nil {
+			return nil, err
+		}
+		for k, v := range envDot {
+			result[k] = v
+		}
+	}
+
+	// 5. .env.local (overrides all .env files).
 	local, err := LoadDotEnv(filepath.Join(dir, ".env.local"))
 	if err != nil {
 		return nil, err
@@ -101,7 +129,7 @@ func Collect(dir string, baseVars Vars, cliVars Vars) (Vars, error) {
 		result[k] = v
 	}
 
-	// 4. OS environment variables.
+	// 6. OS environment variables.
 	for _, entry := range os.Environ() {
 		idx := strings.IndexByte(entry, '=')
 		if idx < 0 {
@@ -110,12 +138,121 @@ func Collect(dir string, baseVars Vars, cliVars Vars) (Vars, error) {
 		result[strings.ToLower(entry[:idx])] = entry[idx+1:]
 	}
 
-	// 5. CLI --var flags (highest priority).
+	// 7. CLI --var flags (highest priority).
 	for k, v := range cliVars {
 		result[strings.ToLower(k)] = v
 	}
 
 	return result, nil
+}
+
+// envFileProbe is used to detect whether a YAML file is in multi-environment
+// format. If Environments is non-nil after unmarshaling, it is multi-env.
+type envFileProbe struct {
+	Environments map[string]map[string]string `yaml:"environments"`
+}
+
+// LoadEnvFile loads a YAML environment file and returns the variables for the
+// named environment. Two formats are supported:
+//
+// Single-environment: the whole file is a flat key→value map. envName is
+// ignored. schema_version is excluded from the returned vars.
+//
+// Multi-environment: variables are nested under an "environments" key with
+// named sub-maps. envName selects which environment to load.
+//
+// Missing files are silently ignored (same behaviour as LoadDotEnv).
+func LoadEnvFile(path string, envName string) (Vars, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return Vars{}, nil
+		}
+		return nil, fmt.Errorf("reading %s: %w", filepath.Base(path), err)
+	}
+
+	// Detect format.
+	var probe envFileProbe
+	if err := yaml.Unmarshal(data, &probe); err != nil {
+		return nil, fmt.Errorf("parsing %s: %w", filepath.Base(path), err)
+	}
+
+	if probe.Environments != nil {
+		// Multi-environment format.
+		if envName == "" {
+			return nil, fmt.Errorf("environment name required for multi-environment file %s", filepath.Base(path))
+		}
+		env, ok := probe.Environments[envName]
+		if !ok {
+			names := make([]string, 0, len(probe.Environments))
+			for n := range probe.Environments {
+				names = append(names, n)
+			}
+			sort.Strings(names)
+			return nil, fmt.Errorf("environment %q not found in %s; available: %s", envName, filepath.Base(path), strings.Join(names, ", "))
+		}
+		vars := make(Vars, len(env))
+		for k, v := range env {
+			vars[strings.ToLower(k)] = v
+		}
+		return vars, nil
+	}
+
+	// Single-environment format: unmarshal into a generic map to capture all keys.
+	var raw map[string]interface{}
+	if err := yaml.Unmarshal(data, &raw); err != nil {
+		return nil, fmt.Errorf("parsing %s: %w", filepath.Base(path), err)
+	}
+
+	vars := make(Vars, len(raw))
+	for k, v := range raw {
+		key := strings.ToLower(k)
+		if key == "schema_version" {
+			continue // metadata field, not a user variable
+		}
+		vars[key] = fmt.Sprintf("%v", v)
+	}
+	return vars, nil
+}
+
+// ResolveEnvFile searches for the environment YAML file for envName.
+// It checks the project directory (.apitool/envs/) before the global config
+// directory (~/.config/apitool/envs/). Returns the file path and the
+// envName to pass to LoadEnvFile (empty string for single-env files).
+// Returns ("", "") if envName is empty or no env file is found.
+func ResolveEnvFile(cwd string, envName string) (filePath string, resolvedEnvName string) {
+	if envName == "" {
+		return "", ""
+	}
+
+	home, _ := os.UserHomeDir()
+
+	candidates := []struct {
+		path    string
+		envName string
+	}{
+		{filepath.Join(cwd, ".apitool", "envs", envName+".yaml"), ""},
+		{filepath.Join(cwd, ".apitool", "envs", "environments.yaml"), envName},
+	}
+	if home != "" {
+		candidates = append(candidates,
+			struct {
+				path    string
+				envName string
+			}{filepath.Join(home, ".config", "apitool", "envs", envName+".yaml"), ""},
+			struct {
+				path    string
+				envName string
+			}{filepath.Join(home, ".config", "apitool", "envs", "environments.yaml"), envName},
+		)
+	}
+
+	for _, c := range candidates {
+		if _, err := os.Stat(c.path); err == nil {
+			return c.path, c.envName
+		}
+	}
+	return "", ""
 }
 
 // Interpolate replaces all ${varname} references in s using vars.

@@ -76,7 +76,7 @@ func TestIntegration_Send_Success(t *testing.T) {
 	cfg := config.Defaults()
 	var code int
 	stdout, _ := captureOutput(t, func() {
-		code = runSend([]string{"-f", reqFile}, cfg)
+		code = runSend([]string{"-f", reqFile}, cfg, t.TempDir())
 	})
 
 	if code != exitOK {
@@ -100,7 +100,7 @@ func TestIntegration_Send_RawOutput(t *testing.T) {
 
 	var code int
 	stdout, stderr := captureOutput(t, func() {
-		code = runSend([]string{"-f", reqFile, "--raw"}, config.Defaults())
+		code = runSend([]string{"-f", reqFile, "--raw"}, config.Defaults(), t.TempDir())
 	})
 
 	if code != exitOK {
@@ -126,7 +126,7 @@ func TestIntegration_Send_JSONOutput(t *testing.T) {
 
 	var code int
 	stdout, stderr := captureOutput(t, func() {
-		code = runSend([]string{"-f", reqFile, "--json"}, config.Defaults())
+		code = runSend([]string{"-f", reqFile, "--json"}, config.Defaults(), t.TempDir())
 	})
 
 	if code != exitOK {
@@ -156,7 +156,7 @@ func TestIntegration_Send_QuietMode(t *testing.T) {
 
 	var code int
 	stdout, stderr := captureOutput(t, func() {
-		code = runSend([]string{"-f", reqFile, "--quiet"}, config.Defaults())
+		code = runSend([]string{"-f", reqFile, "--quiet"}, config.Defaults(), t.TempDir())
 	})
 
 	if code != exitOK {
@@ -181,7 +181,7 @@ func TestIntegration_Send_FailOnError_4xx(t *testing.T) {
 
 	var code int
 	captureOutput(t, func() {
-		code = runSend([]string{"-f", reqFile, "--fail-on-error", "--quiet"}, config.Defaults())
+		code = runSend([]string{"-f", reqFile, "--fail-on-error", "--quiet"}, config.Defaults(), t.TempDir())
 	})
 
 	if code != exitHTTPError {
@@ -201,7 +201,7 @@ func TestIntegration_Send_No4xxExitWithoutFlag(t *testing.T) {
 
 	var code int
 	captureOutput(t, func() {
-		code = runSend([]string{"-f", reqFile, "--quiet"}, config.Defaults())
+		code = runSend([]string{"-f", reqFile, "--quiet"}, config.Defaults(), t.TempDir())
 	})
 
 	if code != exitOK {
@@ -212,7 +212,7 @@ func TestIntegration_Send_No4xxExitWithoutFlag(t *testing.T) {
 func TestIntegration_Send_MissingFile(t *testing.T) {
 	var code int
 	captureOutput(t, func() {
-		code = runSend([]string{"-f", "/no/such/file.yaml"}, config.Defaults())
+		code = runSend([]string{"-f", "/no/such/file.yaml"}, config.Defaults(), t.TempDir())
 	})
 
 	if code != exitToolError {
@@ -231,7 +231,7 @@ func TestIntegration_Send_NetworkError(t *testing.T) {
 
 	var code int
 	captureOutput(t, func() {
-		code = runSend([]string{"-f", reqFile, "--timeout", "2s"}, config.Defaults())
+		code = runSend([]string{"-f", reqFile, "--timeout", "2s"}, config.Defaults(), t.TempDir())
 	})
 
 	if code != exitNetworkError {
@@ -259,7 +259,7 @@ func TestIntegration_Send_VarFlagSubstitution(t *testing.T) {
 			"-f", reqFile,
 			"--raw",
 			"--var", "api_version=v2",
-		}, config.Defaults())
+		}, config.Defaults(), t.TempDir())
 	})
 
 	if code != exitOK {
@@ -286,7 +286,7 @@ func TestIntegration_Send_DotEnvSubstitution(t *testing.T) {
 
 	var code int
 	captureOutput(t, func() {
-		code = runSend([]string{"-f", reqFile, "--raw"}, config.Defaults())
+		code = runSend([]string{"-f", reqFile, "--raw"}, config.Defaults(), t.TempDir())
 	})
 
 	if code != exitOK {
@@ -316,7 +316,7 @@ func TestIntegration_Send_VarFlagOverridesDotEnv(t *testing.T) {
 			"-f", reqFile,
 			"--raw",
 			"--var", "apitool_test_ver=cli-value",
-		}, config.Defaults())
+		}, config.Defaults(), t.TempDir())
 	})
 
 	if code != exitOK {
@@ -348,7 +348,7 @@ requests:
 
 	var code int
 	stdout, _ := captureOutput(t, func() {
-		code = runRun([]string{"List Items", "--collection", colFile, "--raw"}, config.Defaults())
+		code = runRun([]string{"List Items", "--collection", colFile, "--raw"}, config.Defaults(), t.TempDir())
 	})
 
 	if code != exitOK {
@@ -371,7 +371,7 @@ requests:
 
 	var code int
 	_, stderr := captureOutput(t, func() {
-		code = runRun([]string{"No Such Request", "--collection", colFile}, config.Defaults())
+		code = runRun([]string{"No Such Request", "--collection", colFile}, config.Defaults(), t.TempDir())
 	})
 
 	if code != exitToolError {
@@ -385,7 +385,7 @@ requests:
 func TestIntegration_Run_MissingCollectionFile(t *testing.T) {
 	var code int
 	captureOutput(t, func() {
-		code = runRun([]string{"Any Request", "--collection", "/no/such/collection.yaml"}, config.Defaults())
+		code = runRun([]string{"Any Request", "--collection", "/no/such/collection.yaml"}, config.Defaults(), t.TempDir())
 	})
 
 	if code != exitToolError {

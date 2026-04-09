@@ -283,3 +283,53 @@ func TestLoadFromPaths_InvalidProjectConfig(t *testing.T) {
 		t.Error("expected error for invalid project config color value")
 	}
 }
+
+func TestLoadFile_SchemaVersionParsed(t *testing.T) {
+	dir := t.TempDir()
+	path := writeTempConfig(t, dir, "cfg.yaml", "schema_version: 1\noutput:\n  format: raw\n")
+
+	cfg, err := LoadFile(path)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.SchemaVersion != 1 {
+		t.Errorf("SchemaVersion = %d, want 1", cfg.SchemaVersion)
+	}
+}
+
+func TestLoadFile_DefaultEnvParsed(t *testing.T) {
+	dir := t.TempDir()
+	path := writeTempConfig(t, dir, "cfg.yaml", "default_env: staging\n")
+
+	cfg, err := LoadFile(path)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.DefaultEnv != "staging" {
+		t.Errorf("DefaultEnv = %q, want \"staging\"", cfg.DefaultEnv)
+	}
+}
+
+func TestMerge_DefaultEnvPropagated(t *testing.T) {
+	base := Defaults()
+	base.DefaultEnv = "development"
+	override := &Config{DefaultEnv: "production"}
+
+	got := merge(base, override)
+
+	if got.DefaultEnv != "production" {
+		t.Errorf("DefaultEnv = %q, want \"production\"", got.DefaultEnv)
+	}
+}
+
+func TestMerge_DefaultEnvEmptyKeepsBase(t *testing.T) {
+	base := Defaults()
+	base.DefaultEnv = "development"
+	override := &Config{} // DefaultEnv is ""
+
+	got := merge(base, override)
+
+	if got.DefaultEnv != "development" {
+		t.Errorf("DefaultEnv = %q, want \"development\"", got.DefaultEnv)
+	}
+}

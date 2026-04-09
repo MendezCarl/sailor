@@ -76,28 +76,28 @@ The v0.x phase is about building the right foundation. Feature breadth is explic
 
 The minimum useful tool. Demonstrates that the core approach works.
 
-- [ ] Send GET, POST, PUT, PATCH, DELETE requests from the CLI
-- [ ] Set request headers via flags
-- [ ] Set a request body from a flag or stdin
-- [ ] Display response status, headers, and body
-- [ ] Basic JSON response formatting in the terminal
-- [ ] Exit code semantics defined and implemented
-- [ ] Single binary build for Linux, macOS, and Windows (amd64)
-- [ ] `--help` output on all commands
+- [x] Send GET, POST, PUT, PATCH, DELETE requests from the CLI
+- [x] Set request headers via flags
+- [x] Set a request body from a flag or stdin
+- [x] Display response status, headers, and body
+- [x] Basic JSON response formatting in the terminal
+- [x] Exit code semantics defined and implemented
+- [x] Single binary build for Linux, macOS, and Windows (amd64)
+- [x] `--help` output on all commands
 
 ### v0.2 — File format foundation
 
 Establishes the YAML formats that will stabilize into v1.0. This is the most important milestone to get right, because the file format is the user's long-term investment.
 
-- [ ] Collection YAML format defined and documented
-- [ ] Request YAML format defined and documented
-- [ ] Environment YAML format defined and documented (single and multi-environment)
-- [ ] `.env` file loading and variable interpolation
-- [ ] `${variable}` syntax fully implemented
-- [ ] `sailor run <name>` command for executing saved requests
-- [ ] Global and project-local storage resolution
-- [ ] `schema_version` field supported in all file types
-- [ ] Format specification documented in `docs/file-format.md`
+- [x] Collection YAML format defined and documented
+- [x] Request YAML format defined and documented
+- [x] Environment YAML format defined and documented (single and multi-environment)
+- [x] `.env` file loading and variable interpolation
+- [x] `${variable}` syntax fully implemented
+- [x] `sailor run <name>` command for executing saved requests
+- [x] Global and project-local storage resolution
+- [x] `schema_version` field supported in all file types
+- [x] Format specification documented in `docs/file-format.md`
 
 ### v0.3 — Collections and environments
 

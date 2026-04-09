@@ -187,7 +187,7 @@ func TestCollect_CLIOverridesAll(t *testing.T) {
 	base := Vars{"my_var": "from_base"}
 	cli := Vars{"my_var": "from_cli"}
 
-	vars, err := Collect(dir, base, cli)
+	vars, err := Collect(dir, base, cli, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -207,7 +207,7 @@ func TestCollect_LocalOverridesDotEnv(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	vars, err := Collect(dir, Vars{}, Vars{})
+	vars, err := Collect(dir, Vars{}, Vars{}, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -223,13 +223,257 @@ func TestCollect_BaseVarsAsLowestPriority(t *testing.T) {
 	// Use an unusual name unlikely to exist in the test environment.
 	base := Vars{"apitool_test_unique_base_only": "base_value"}
 
-	vars, err := Collect(dir, base, Vars{})
+	vars, err := Collect(dir, base, Vars{}, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	if vars["apitool_test_unique_base_only"] != "base_value" {
 		t.Errorf("base var not found or wrong value: %q", vars["apitool_test_unique_base_only"])
+	}
+}
+
+func TestCollect_EnvYAMLLayerPriority(t *testing.T) {
+	dir := t.TempDir()
+	// env YAML sets MY_VAR=from_yaml; .env overrides to from_dotenv
+	envFile := filepath.Join(dir, "staging.yaml")
+	if err := os.WriteFile(envFile, []byte("my_var: from_yaml\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, ".env"), []byte("MY_VAR=from_dotenv\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	vars, err := Collect(dir, Vars{}, Vars{}, envFile, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// .env wins over env YAML.
+	if vars["my_var"] != "from_dotenv" {
+		t.Errorf("my_var: got %q, want %q", vars["my_var"], "from_dotenv")
+	}
+}
+
+func TestCollect_DotEnvEnvSpecific(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, ".env"), []byte("MY_VAR=base\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, ".env.staging"), []byte("MY_VAR=staging\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, ".env.local"), []byte("MY_VAR=local\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// With staging env: .env.staging wins over .env but .env.local wins over both.
+	vars, err := Collect(dir, Vars{}, Vars{}, "", "staging")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if vars["my_var"] != "local" {
+		t.Errorf("my_var: got %q, want \"local\"", vars["my_var"])
+	}
+}
+
+func TestCollect_DotEnvEnvSpecificBetweenDotEnvAndLocal(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, ".env"), []byte("MY_VAR=base\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, ".env.staging"), []byte("MY_VAR=staging\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	// No .env.local — so .env.staging should win over .env.
+
+	vars, err := Collect(dir, Vars{}, Vars{}, "", "staging")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if vars["my_var"] != "staging" {
+		t.Errorf("my_var: got %q, want \"staging\"", vars["my_var"])
+	}
+}
+
+func TestCollect_NoEnvFilePath_Skipped(t *testing.T) {
+	dir := t.TempDir()
+	// No env YAML, no .env files — only base vars.
+	base := Vars{"apitool_test_no_env_file": "base_only"}
+
+	vars, err := Collect(dir, base, Vars{}, "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if vars["apitool_test_no_env_file"] != "base_only" {
+		t.Errorf("got %q, want \"base_only\"", vars["apitool_test_no_env_file"])
+	}
+}
+
+// --- LoadEnvFile ---
+
+func writeEnvFile(t *testing.T, dir, name, content string) string {
+	t.Helper()
+	path := filepath.Join(dir, name)
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+func TestLoadEnvFile_SingleEnvFormat(t *testing.T) {
+	dir := t.TempDir()
+	path := writeEnvFile(t, dir, "staging.yaml", "base_url: https://staging.example.com\nauth_token: tok123\n")
+
+	vars, err := LoadEnvFile(path, "")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if vars["base_url"] != "https://staging.example.com" {
+		t.Errorf("base_url: got %q", vars["base_url"])
+	}
+	if vars["auth_token"] != "tok123" {
+		t.Errorf("auth_token: got %q", vars["auth_token"])
+	}
+}
+
+func TestLoadEnvFile_SingleEnvSkipsSchemaVersion(t *testing.T) {
+	dir := t.TempDir()
+	path := writeEnvFile(t, dir, "env.yaml", "schema_version: 1\nbase_url: https://example.com\n")
+
+	vars, err := LoadEnvFile(path, "")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if _, ok := vars["schema_version"]; ok {
+		t.Error("schema_version should not appear in returned vars")
+	}
+	if vars["base_url"] != "https://example.com" {
+		t.Errorf("base_url: got %q", vars["base_url"])
+	}
+}
+
+func TestLoadEnvFile_MultiEnvFormat_HappyPath(t *testing.T) {
+	dir := t.TempDir()
+	content := `environments:
+  development:
+    base_url: http://localhost:3000
+  production:
+    base_url: https://api.example.com
+`
+	path := writeEnvFile(t, dir, "environments.yaml", content)
+
+	vars, err := LoadEnvFile(path, "development")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if vars["base_url"] != "http://localhost:3000" {
+		t.Errorf("base_url: got %q, want %q", vars["base_url"], "http://localhost:3000")
+	}
+}
+
+func TestLoadEnvFile_MultiEnvFormat_UnknownEnv(t *testing.T) {
+	dir := t.TempDir()
+	content := "environments:\n  development:\n    base_url: http://localhost\n"
+	path := writeEnvFile(t, dir, "environments.yaml", content)
+
+	_, err := LoadEnvFile(path, "production")
+	if err == nil {
+		t.Fatal("expected error for unknown environment name")
+	}
+}
+
+func TestLoadEnvFile_MultiEnvFormat_EmptyEnvName(t *testing.T) {
+	dir := t.TempDir()
+	content := "environments:\n  development:\n    base_url: http://localhost\n"
+	path := writeEnvFile(t, dir, "environments.yaml", content)
+
+	_, err := LoadEnvFile(path, "")
+	if err == nil {
+		t.Fatal("expected error when envName is empty for multi-env file")
+	}
+}
+
+func TestLoadEnvFile_MissingFile(t *testing.T) {
+	vars, err := LoadEnvFile("/no/such/file.yaml", "")
+	if err != nil {
+		t.Fatalf("missing file should not error, got: %v", err)
+	}
+	if len(vars) != 0 {
+		t.Errorf("expected empty vars, got %v", vars)
+	}
+}
+
+func TestLoadEnvFile_IntValuesCoercedToString(t *testing.T) {
+	dir := t.TempDir()
+	path := writeEnvFile(t, dir, "env.yaml", "port: 8080\nenabled: true\n")
+
+	vars, err := LoadEnvFile(path, "")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if vars["port"] != "8080" {
+		t.Errorf("port: got %q, want \"8080\"", vars["port"])
+	}
+	if vars["enabled"] != "true" {
+		t.Errorf("enabled: got %q, want \"true\"", vars["enabled"])
+	}
+}
+
+// --- ResolveEnvFile ---
+
+func TestResolveEnvFile_EmptyEnvName(t *testing.T) {
+	fp, name := ResolveEnvFile(t.TempDir(), "")
+	if fp != "" || name != "" {
+		t.Errorf("expected empty results, got %q %q", fp, name)
+	}
+}
+
+func TestResolveEnvFile_ProjectSingleEnv(t *testing.T) {
+	dir := t.TempDir()
+	envsDir := filepath.Join(dir, ".apitool", "envs")
+	if err := os.MkdirAll(envsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	envPath := filepath.Join(envsDir, "staging.yaml")
+	if err := os.WriteFile(envPath, []byte("base_url: https://staging.example.com\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	fp, resolvedName := ResolveEnvFile(dir, "staging")
+	if fp != envPath {
+		t.Errorf("filePath: got %q, want %q", fp, envPath)
+	}
+	if resolvedName != "" {
+		t.Errorf("resolvedEnvName: got %q, want \"\" (single-env file)", resolvedName)
+	}
+}
+
+func TestResolveEnvFile_ProjectMultiEnv(t *testing.T) {
+	dir := t.TempDir()
+	envsDir := filepath.Join(dir, ".apitool", "envs")
+	if err := os.MkdirAll(envsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	// No staging.yaml — only environments.yaml (multi-env).
+	multiPath := filepath.Join(envsDir, "environments.yaml")
+	if err := os.WriteFile(multiPath, []byte("environments:\n  staging:\n    base_url: https://staging.example.com\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	fp, resolvedName := ResolveEnvFile(dir, "staging")
+	if fp != multiPath {
+		t.Errorf("filePath: got %q, want %q", fp, multiPath)
+	}
+	if resolvedName != "staging" {
+		t.Errorf("resolvedEnvName: got %q, want \"staging\"", resolvedName)
+	}
+}
+
+func TestResolveEnvFile_NotFound(t *testing.T) {
+	fp, name := ResolveEnvFile(t.TempDir(), "nonexistent")
+	if fp != "" || name != "" {
+		t.Errorf("expected empty results for not-found env, got %q %q", fp, name)
 	}
 }
 

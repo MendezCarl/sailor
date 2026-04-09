@@ -58,9 +58,9 @@ func main() {
 
 	switch os.Args[1] {
 	case "send":
-		os.Exit(runSend(os.Args[2:], cfg))
+		os.Exit(runSend(os.Args[2:], cfg, cwd))
 	case "run":
-		os.Exit(runRun(os.Args[2:], cfg))
+		os.Exit(runRun(os.Args[2:], cfg, cwd))
 	case "import":
 		os.Exit(runImport(os.Args[2:]))
 	case "export":
@@ -103,9 +103,10 @@ func parseVarFlags(flags varFlags) (env.Vars, error) {
 // envDir is the directory from which .env files are loaded.
 // cliTimeout overrides per-request and config timeouts when non-empty.
 // failOnError causes exit code 3 when the response status is 4xx or 5xx.
+// envFilePath and envName identify an optional active environment YAML file.
 // Returns an exit code.
-func execRequest(req *request.Request, envDir string, cliVars env.Vars, baseVars env.Vars, opts render.Options, cfg *config.Config, cliTimeout string, failOnError bool) int {
-	vars, err := env.Collect(envDir, baseVars, cliVars)
+func execRequest(req *request.Request, envDir string, cliVars env.Vars, baseVars env.Vars, opts render.Options, cfg *config.Config, cliTimeout string, failOnError bool, envFilePath string, envName string) int {
+	vars, err := env.Collect(envDir, baseVars, cliVars, envFilePath, envName)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %s\n", err)
 		return exitToolError
@@ -159,7 +160,7 @@ func resolveTimeout(cliTimeout string, req *request.Request, cfg *config.Config)
 }
 
 // runSend implements `apitool send -f <file>`.
-func runSend(args []string, cfg *config.Config) int {
+func runSend(args []string, cfg *config.Config, cwd string) int {
 	fs := flag.NewFlagSet("send", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 
@@ -171,6 +172,7 @@ func runSend(args []string, cfg *config.Config) int {
 		jsonOutput  bool
 		showHeaders bool
 		failOnError bool
+		envName     string
 		vars        varFlags
 	)
 
@@ -183,6 +185,7 @@ func runSend(args []string, cfg *config.Config) int {
 	fs.BoolVar(&showHeaders, "headers", false, "print response headers")
 	fs.BoolVar(&showHeaders, "i", false, "print response headers (shorthand for --headers)")
 	fs.BoolVar(&failOnError, "fail-on-error", false, "exit 3 on HTTP 4xx/5xx response")
+	fs.StringVar(&envName, "env", "", "environment name to activate (e.g. staging, production)")
 	fs.Var(&vars, "var", "set a variable: key=value (repeatable)")
 
 	fs.Usage = func() {
@@ -195,6 +198,7 @@ func runSend(args []string, cfg *config.Config) int {
 		fmt.Fprintln(os.Stderr, "  sailor send -f examples/demo.yaml")
 		fmt.Fprintln(os.Stderr, "  sailor send -f examples/demo.yaml --headers")
 		fmt.Fprintln(os.Stderr, "  sailor send -f examples/demo.yaml --timeout 60s")
+		fmt.Fprintln(os.Stderr, "  sailor send -f examples/demo.yaml --env staging")
 		fmt.Fprintln(os.Stderr, "  sailor send -f examples/demo.yaml --var base_url=http://localhost:8080")
 		fmt.Fprintln(os.Stderr, "  sailor send -f examples/demo.yaml --raw | jq '.title'")
 		fmt.Fprintln(os.Stderr, "  sailor send -f examples/demo.yaml --json | jq '.status_code'")
@@ -223,13 +227,18 @@ func runSend(args []string, cfg *config.Config) int {
 		return exitToolError
 	}
 
+	if envName == "" {
+		envName = cfg.DefaultEnv
+	}
+	envFilePath, resolvedEnvName := env.ResolveEnvFile(cwd, envName)
+
 	opts := buildOpts(cfg, raw, quiet, jsonOutput, showHeaders)
 	envDir := filepath.Dir(filePath)
-	return execRequest(req, envDir, cliVars, env.Vars{}, opts, cfg, timeout, failOnError)
+	return execRequest(req, envDir, cliVars, env.Vars{}, opts, cfg, timeout, failOnError, envFilePath, resolvedEnvName)
 }
 
 // runRun implements `apitool run <name>`.
-func runRun(args []string, cfg *config.Config) int {
+func runRun(args []string, cfg *config.Config, cwd string) int {
 	fs := flag.NewFlagSet("run", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 
@@ -241,6 +250,7 @@ func runRun(args []string, cfg *config.Config) int {
 		jsonOutput     bool
 		showHeaders    bool
 		failOnError    bool
+		envName        string
 		vars           varFlags
 	)
 
@@ -253,6 +263,7 @@ func runRun(args []string, cfg *config.Config) int {
 	fs.BoolVar(&showHeaders, "headers", false, "print response headers")
 	fs.BoolVar(&showHeaders, "i", false, "print response headers (shorthand for --headers)")
 	fs.BoolVar(&failOnError, "fail-on-error", false, "exit 3 on HTTP 4xx/5xx response")
+	fs.StringVar(&envName, "env", "", "environment name to activate (e.g. staging, production)")
 	fs.Var(&vars, "var", "set a variable: key=value (repeatable)")
 
 	fs.Usage = func() {
@@ -265,6 +276,7 @@ func runRun(args []string, cfg *config.Config) int {
 		fmt.Fprintln(os.Stderr, "  sailor run \"List Posts\" --collection examples/posts-collection.yaml")
 		fmt.Fprintln(os.Stderr, "  sailor run \"Get Post\" --collection examples/posts-collection.yaml --headers")
 		fmt.Fprintln(os.Stderr, "  sailor run \"List Posts\" --timeout 60s")
+		fmt.Fprintln(os.Stderr, "  sailor run \"List Posts\" --env staging")
 		fmt.Fprintln(os.Stderr, "  sailor run \"List Posts\" --var base_url=http://localhost:8080")
 		fmt.Fprintln(os.Stderr, "  sailor run \"List Posts\" --raw | jq '.[0].title'")
 		fmt.Fprintln(os.Stderr, "  sailor run \"List Posts\" --json | jq '.status_code'")
@@ -338,11 +350,6 @@ func runRun(args []string, cfg *config.Config) int {
 		envDir = filepath.Dir(collectionFile)
 	} else {
 		// Search the default collection directory in CWD.
-		cwd, err := os.Getwd()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "error: could not determine working directory: %s\n", err)
-			return exitToolError
-		}
 		colDir := collection.DefaultCollectionDir(cwd)
 
 		col, req, err = collection.Search(colDir, requestName)
@@ -359,7 +366,12 @@ func runRun(args []string, cfg *config.Config) int {
 		baseVars["base_url"] = col.BaseURL
 	}
 
-	return execRequest(req, envDir, cliVars, baseVars, opts, cfg, timeout, failOnError)
+	if envName == "" {
+		envName = cfg.DefaultEnv
+	}
+	envFilePath, resolvedEnvName := env.ResolveEnvFile(cwd, envName)
+
+	return execRequest(req, envDir, cliVars, baseVars, opts, cfg, timeout, failOnError, envFilePath, resolvedEnvName)
 }
 
 // buildOpts constructs render.Options from the merged config and CLI flags.

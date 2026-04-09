@@ -15,7 +15,8 @@ import (
 // Request is the internal representation of an HTTP request.
 // It is populated from a YAML file by LoadFile, and consumed by the executor.
 type Request struct {
-	Name    string            `yaml:"name"`
+	SchemaVersion int               `yaml:"schema_version"`
+	Name          string            `yaml:"name"`
 	Method  string            `yaml:"method"`
 	URL     string            `yaml:"url"`
 	Headers map[string]string `yaml:"headers"`

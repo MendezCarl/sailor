@@ -72,6 +72,8 @@ type OutputConfig struct {
 // Config holds all user-configurable settings.
 // Zero values mean "use the default" and are overridden by Defaults().
 type Config struct {
+	SchemaVersion int `yaml:"schema_version"`
+
 	// Timeout is the maximum time to wait for a response.
 	// Zero means no timeout (http.DefaultClient behaviour).
 	Timeout Duration `yaml:"timeout"`
@@ -80,6 +82,9 @@ type Config struct {
 	// when --collection is not provided. Takes precedence over the .apitool/
 	// directory search.
 	DefaultCollection string `yaml:"default_collection"`
+
+	// DefaultEnv is the environment name activated when --env is not provided.
+	DefaultEnv string `yaml:"default_env"`
 
 	// Output groups display options.
 	Output OutputConfig `yaml:"output"`
@@ -171,6 +176,9 @@ func merge(base, override *Config) *Config {
 	}
 	if override.DefaultCollection != "" {
 		out.DefaultCollection = override.DefaultCollection
+	}
+	if override.DefaultEnv != "" {
+		out.DefaultEnv = override.DefaultEnv
 	}
 	if override.Output.Format != "" {
 		out.Output.Format = override.Output.Format
