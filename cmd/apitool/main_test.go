@@ -95,7 +95,7 @@ func TestResolveTimeout_MinuteShorthand(t *testing.T) {
 
 func TestBuildOpts_DefaultsFromConfig(t *testing.T) {
 	cfg := config.Defaults()
-	opts := buildOpts(cfg, false, false, false, false)
+	opts := buildOpts(cfg, false, false, false, false, false, "")
 	if opts.Format != "pretty" {
 		t.Errorf("Format: got %q, want \"pretty\"", opts.Format)
 	}
@@ -109,29 +109,89 @@ func TestBuildOpts_DefaultsFromConfig(t *testing.T) {
 
 func TestBuildOpts_RawOverridesJSON(t *testing.T) {
 	// --raw should win over --json when both are set.
-	opts := buildOpts(config.Defaults(), true, false, true, false)
+	opts := buildOpts(config.Defaults(), true, false, true, false, false, "")
 	if opts.Format != "raw" {
 		t.Errorf("Format: got %q, want \"raw\"", opts.Format)
 	}
 }
 
 func TestBuildOpts_JSONFormat(t *testing.T) {
-	opts := buildOpts(config.Defaults(), false, false, true, false)
+	opts := buildOpts(config.Defaults(), false, false, true, false, false, "")
 	if opts.Format != "json" {
 		t.Errorf("Format: got %q, want \"json\"", opts.Format)
 	}
 }
 
 func TestBuildOpts_QuietFlag(t *testing.T) {
-	opts := buildOpts(config.Defaults(), false, true, false, false)
+	opts := buildOpts(config.Defaults(), false, true, false, false, false, "")
 	if !opts.Quiet {
 		t.Error("Quiet should be true when quiet=true is passed")
 	}
 }
 
 func TestBuildOpts_ShowHeaders(t *testing.T) {
-	opts := buildOpts(config.Defaults(), false, false, false, true)
+	opts := buildOpts(config.Defaults(), false, false, false, true, false, "")
 	if !opts.ShowHeaders {
 		t.Error("ShowHeaders should be true when showHeaders=true is passed")
+	}
+}
+
+func TestBuildOpts_ColorFlagOverridesConfig(t *testing.T) {
+	cfg := config.Defaults() // cfg.Output.Color == "auto"
+	opts := buildOpts(cfg, false, false, false, false, false, "never")
+	if opts.Color != "never" {
+		t.Errorf("Color: got %q, want \"never\"", opts.Color)
+	}
+}
+
+func TestBuildOpts_ColorFlagEmpty_UsesConfig(t *testing.T) {
+	cfg := config.Defaults() // cfg.Output.Color == "auto"
+	opts := buildOpts(cfg, false, false, false, false, false, "")
+	if opts.Color != "auto" {
+		t.Errorf("Color: got %q, want \"auto\" (from config)", opts.Color)
+	}
+}
+
+func TestBuildOpts_NoPager(t *testing.T) {
+	opts := buildOpts(config.Defaults(), false, false, false, false, true, "")
+	if !opts.NoPager {
+		t.Error("NoPager should be true when noPager=true is passed")
+	}
+}
+
+// ---- resolveFollowRedirects -------------------------------------------------
+
+func TestResolveFollowRedirects_NoFollowWins(t *testing.T) {
+	cfg := config.Defaults()
+	got := resolveFollowRedirects(false, true, cfg)
+	if got == nil || *got != false {
+		t.Error("expected false when noFollowFlag=true")
+	}
+}
+
+func TestResolveFollowRedirects_FollowFlagWins(t *testing.T) {
+	// Both flags provided: --no-follow-redirects wins.
+	cfg := config.Defaults()
+	got := resolveFollowRedirects(true, false, cfg)
+	if got == nil || *got != true {
+		t.Error("expected true when followFlag=true")
+	}
+}
+
+func TestResolveFollowRedirects_FallbackToConfig(t *testing.T) {
+	cfg := config.Defaults() // FollowRedirects = &true
+	got := resolveFollowRedirects(false, false, cfg)
+	if got == nil || *got != true {
+		t.Error("expected config value (true) when no flags set")
+	}
+}
+
+func TestResolveFollowRedirects_FallbackToConfig_False(t *testing.T) {
+	falseVal := false
+	cfg := config.Defaults()
+	cfg.FollowRedirects = &falseVal
+	got := resolveFollowRedirects(false, false, cfg)
+	if got == nil || *got != false {
+		t.Error("expected config value (false) when no flags set")
 	}
 }

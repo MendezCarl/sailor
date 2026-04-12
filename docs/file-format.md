@@ -234,6 +234,65 @@ Request names are free-form strings. Within a CLI invocation, requests are refer
 
 Names are not IDs. They can be changed without breaking anything except shell scripts or aliases that reference them by name. A future version of the format may introduce optional stable IDs alongside names; see Section 16.
 
+### 5.6 Authentication Helpers
+
+The optional `auth` block provides a convenience shorthand for constructing authentication headers. When present, the tool automatically sets the appropriate header before sending the request. Variable references (`${var}`) in auth fields are resolved using the active environment before the header is constructed.
+
+An explicit `Authorization` header in the `headers` block always takes precedence over the `auth` block.
+
+**Bearer token:**
+```yaml
+method: GET
+url: "https://api.example.com/profile"
+auth:
+  type: bearer
+  token: "${auth_token}"
+```
+Sets: `Authorization: Bearer <token>`
+
+**HTTP Basic auth:**
+```yaml
+method: GET
+url: "https://api.example.com/admin"
+auth:
+  type: basic
+  username: "${api_user}"
+  password: "${api_password}"
+```
+Sets: `Authorization: Basic <base64(username:password)>`
+
+**API key (default Authorization header):**
+```yaml
+method: GET
+url: "https://api.example.com/data"
+auth:
+  type: apikey
+  key: "${api_key}"
+```
+Sets: `Authorization: <key>`
+
+**API key (custom header):**
+```yaml
+method: GET
+url: "https://api.example.com/data"
+auth:
+  type: apikey
+  key: "${api_key}"
+  header: "X-Api-Key"
+```
+Sets: `X-Api-Key: <key>`
+
+**Auth field reference:**
+
+| Field | Used by | Required | Description |
+|---|---|---|---|
+| `type` | all | yes | Auth scheme: `bearer`, `basic`, or `apikey` |
+| `token` | bearer | yes | Token value |
+| `username` | basic | yes | Username |
+| `password` | basic | no | Password (empty string if omitted) |
+| `key` | apikey | yes | Key value |
+| `header` | apikey | no | Header name (default: `Authorization`) |
+
 ---
 
 ## 6. Folder and Group Organization
@@ -1110,6 +1169,29 @@ The tool resolves `${auth_token}` by checking (in order): CLI flags, OS environm
 
 ---
 
+### 15.7 Config File
+
+Global config at `~/.config/apitool/config.yaml` or project config at `.apitool/config.yaml`:
+
+```yaml
+schema_version: 1
+timeout: 30s
+follow_redirects: true
+default_collection: .apitool/collections/main.yaml
+default_env: staging
+
+output:
+  format: pretty        # pretty | raw | json
+  color: auto           # auto | always | never
+  show_headers: false
+```
+
+All fields are optional. Missing fields use the defaults shown above.
+Project config merges on top of global config; per-field overrides only.
+`--insecure` is intentionally not a config file option (see architecture.md §16.4).
+
+---
+
 ## 16. Future Compatibility Notes
 
 This section describes known areas where the format may need to evolve and how those evolutions will be handled without breaking existing files.
@@ -1130,21 +1212,8 @@ Because `id` would be optional, adding it does not break any existing file. The 
 
 ### 16.2 Request-Level Authentication Helpers
 
-A future version may add a convenience `auth` block to requests to reduce boilerplate for common authentication patterns:
-
-```yaml
-# Future: optional auth block (not in v1)
-- name: List Users
-  method: GET
-  url: "${base_url}/users"
-  auth:
-    type: bearer
-    token: "${auth_token}"
-```
-
-The `auth` block, if added, will be syntactic sugar that expands to the equivalent `Authorization` header at parse time. It will be entirely optional — existing requests using explicit `Authorization` headers continue to work without modification.
-
-This `auth` block refers exclusively to request-level HTTP authentication. It has no relationship to user accounts, login, or any form of identity within the tool itself.
+Authentication helpers (`bearer`, `basic`, `apikey`) were added in v0.5.
+See **§5.6 Authentication Helpers** for the full field reference and examples.
 
 ### 16.3 GraphQL Request Type
 

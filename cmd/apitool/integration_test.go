@@ -517,3 +517,140 @@ requests:
 		t.Errorf("stdout: missing header, got %q", stdout)
 	}
 }
+
+// ---- exit code coverage -----------------------------------------------------
+
+func TestIntegration_Send_MalformedYAML(t *testing.T) {
+	dir := t.TempDir()
+	reqFile := writeTmp(t, dir, "req.yaml", "method: GET\nurl: [not valid yaml\n")
+
+	var code int
+	captureOutput(t, func() {
+		code = runSend([]string{"-f", reqFile}, config.Defaults(), t.TempDir())
+	})
+
+	if code != exitToolError {
+		t.Errorf("exit code: got %d, want %d (exitToolError)", code, exitToolError)
+	}
+}
+
+func TestIntegration_Send_MissingMethod(t *testing.T) {
+	dir := t.TempDir()
+	reqFile := writeTmp(t, dir, "req.yaml", "url: https://example.com\n")
+
+	var code int
+	captureOutput(t, func() {
+		code = runSend([]string{"-f", reqFile}, config.Defaults(), t.TempDir())
+	})
+
+	if code != exitToolError {
+		t.Errorf("exit code: got %d, want %d (exitToolError)", code, exitToolError)
+	}
+}
+
+func TestIntegration_Send_InvalidTimeout(t *testing.T) {
+	dir := t.TempDir()
+	reqFile := writeTmp(t, dir, "req.yaml", "method: GET\nurl: https://example.com\n")
+
+	var code int
+	captureOutput(t, func() {
+		code = runSend([]string{"-f", reqFile, "--timeout", "notaduration"}, config.Defaults(), t.TempDir())
+	})
+
+	if code != exitToolError {
+		t.Errorf("exit code: got %d, want %d (exitToolError)", code, exitToolError)
+	}
+}
+
+func TestIntegration_Send_BadAuthType(t *testing.T) {
+	// auth.type "oauth2" is not supported — env.Apply returns an error.
+	dir := t.TempDir()
+	reqFile := writeTmp(t, dir, "req.yaml", `method: GET
+url: https://example.com
+auth:
+  type: oauth2
+  token: sometoken
+`)
+
+	var code int
+	captureOutput(t, func() {
+		code = runSend([]string{"-f", reqFile}, config.Defaults(), t.TempDir())
+	})
+
+	if code != exitToolError {
+		t.Errorf("exit code: got %d, want %d (exitToolError)", code, exitToolError)
+	}
+}
+
+func TestIntegration_Run_BadCollectionYAML(t *testing.T) {
+	dir := t.TempDir()
+	colFile := writeTmp(t, dir, "col.yaml", "name: Test\nrequests: [not valid\n")
+
+	var code int
+	captureOutput(t, func() {
+		code = runRun([]string{"Any Request", "--collection", colFile}, config.Defaults(), t.TempDir())
+	})
+
+	if code != exitToolError {
+		t.Errorf("exit code: got %d, want %d (exitToolError)", code, exitToolError)
+	}
+}
+
+// ---- --help smoke tests -----------------------------------------------------
+
+func TestHelp_Send(t *testing.T) {
+	var code int
+	_, stderr := captureOutput(t, func() {
+		// flag.ContinueOnError + --help returns flag.ErrHelp; the handler returns 1.
+		code = runSend([]string{"--help"}, config.Defaults(), t.TempDir())
+	})
+
+	if code != 1 {
+		t.Errorf("exit code: got %d, want 1 (--help)", code)
+	}
+	if !strings.Contains(stderr, "sailor") && !strings.Contains(stderr, "send") {
+		t.Errorf("--help output missing command name: %q", stderr)
+	}
+}
+
+func TestHelp_Run(t *testing.T) {
+	var code int
+	_, stderr := captureOutput(t, func() {
+		code = runRun([]string{"--help"}, config.Defaults(), t.TempDir())
+	})
+
+	if code != 1 {
+		t.Errorf("exit code: got %d, want 1 (--help)", code)
+	}
+	if !strings.Contains(stderr, "sailor") && !strings.Contains(stderr, "run") {
+		t.Errorf("--help output missing command name: %q", stderr)
+	}
+}
+
+func TestHelp_ImportCurl(t *testing.T) {
+	var code int
+	_, stderr := captureOutput(t, func() {
+		code = runImportCurl([]string{"--help"})
+	})
+
+	if code != 1 {
+		t.Errorf("exit code: got %d, want 1 (--help)", code)
+	}
+	if !strings.Contains(stderr, "curl") && !strings.Contains(stderr, "import") {
+		t.Errorf("--help output missing command name: %q", stderr)
+	}
+}
+
+func TestHelp_ExportCurl(t *testing.T) {
+	var code int
+	_, stderr := captureOutput(t, func() {
+		code = runExportCurl([]string{"--help"})
+	})
+
+	if code != 1 {
+		t.Errorf("exit code: got %d, want 1 (--help)", code)
+	}
+	if !strings.Contains(stderr, "curl") && !strings.Contains(stderr, "export") {
+		t.Errorf("--help output missing command name: %q", stderr)
+	}
+}

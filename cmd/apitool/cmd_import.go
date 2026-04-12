@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/MendezCarl/sailor.git/internal/curl"
 )
@@ -58,7 +59,7 @@ func runImportCurl(args []string) int {
 	// characters that the flag parser would misinterpret as flags).
 	var curlStr string
 	var flagArgs []string
-	if len(args) > 0 && !hasPrefix(args[0], "-") {
+	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
 		curlStr = args[0]
 		flagArgs = args[1:]
 	} else {
@@ -89,7 +90,7 @@ func runImportCurl(args []string) int {
 		fmt.Fprintf(os.Stderr, "warning: %s\n", w)
 	}
 
-	yamlBytes, err := marshalRequest(req)
+	yamlBytes, err := requestToYAML(req)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: could not generate YAML: %s\n", err)
 		return 1

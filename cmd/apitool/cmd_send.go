@@ -8,6 +8,7 @@ import (
 
 	"github.com/MendezCarl/sailor.git/internal/config"
 	"github.com/MendezCarl/sailor.git/internal/env"
+	"github.com/MendezCarl/sailor.git/internal/executor"
 	"github.com/MendezCarl/sailor.git/internal/request"
 )
 
@@ -17,15 +18,20 @@ func runSend(args []string, cfg *config.Config, cwd string) int {
 	fs.SetOutput(os.Stderr)
 
 	var (
-		filePath    string
-		timeout     string
-		raw         bool
-		quiet       bool
-		jsonOutput  bool
-		showHeaders bool
-		failOnError bool
-		envName     string
-		vars        varFlags
+		filePath          string
+		timeout           string
+		raw               bool
+		quiet             bool
+		jsonOutput        bool
+		showHeaders       bool
+		failOnError       bool
+		envName           string
+		colorFlag         string
+		noPager           bool
+		followRedirects   bool
+		noFollowRedirects bool
+		insecure          bool
+		vars              varFlags
 	)
 
 	fs.StringVar(&filePath, "f", "", "path to a request YAML file (required)")
@@ -38,6 +44,11 @@ func runSend(args []string, cfg *config.Config, cwd string) int {
 	fs.BoolVar(&showHeaders, "i", false, "print response headers (shorthand for --headers)")
 	fs.BoolVar(&failOnError, "fail-on-error", false, "exit 3 on HTTP 4xx/5xx response")
 	fs.StringVar(&envName, "env", "", "environment name to activate (e.g. staging, production)")
+	fs.StringVar(&colorFlag, "color", "", "color output: auto, always, or never (overrides config)")
+	fs.BoolVar(&noPager, "no-pager", false, "disable automatic paging through $PAGER")
+	fs.BoolVar(&followRedirects, "follow-redirects", false, "follow HTTP redirects (overrides config)")
+	fs.BoolVar(&noFollowRedirects, "no-follow-redirects", false, "do not follow HTTP redirects")
+	fs.BoolVar(&insecure, "insecure", false, "skip TLS certificate verification (for self-signed certs)")
 	fs.Var(&vars, "var", "set a variable: key=value (repeatable)")
 
 	fs.Usage = func() {
@@ -55,6 +66,10 @@ func runSend(args []string, cfg *config.Config, cwd string) int {
 		fmt.Fprintln(os.Stderr, "  sailor send -f examples/demo.yaml --raw | jq '.title'")
 		fmt.Fprintln(os.Stderr, "  sailor send -f examples/demo.yaml --json | jq '.status_code'")
 		fmt.Fprintln(os.Stderr, "  sailor send -f examples/demo.yaml --fail-on-error && echo ok")
+		fmt.Fprintln(os.Stderr, "  sailor send -f examples/demo.yaml --color never")
+		fmt.Fprintln(os.Stderr, "  sailor send -f examples/demo.yaml --no-pager")
+		fmt.Fprintln(os.Stderr, "  sailor send -f examples/demo.yaml --no-follow-redirects")
+		fmt.Fprintln(os.Stderr, "  sailor send -f examples/demo.yaml --insecure")
 	}
 
 	if err := fs.Parse(args); err != nil {
@@ -84,7 +99,19 @@ func runSend(args []string, cfg *config.Config, cwd string) int {
 	}
 	envFilePath, resolvedEnvName := env.ResolveEnvFile(cwd, envName)
 
-	opts := buildOpts(cfg, raw, quiet, jsonOutput, showHeaders)
-	envDir := filepath.Dir(filePath)
-	return execRequest(req, envDir, cliVars, env.Vars{}, opts, cfg, timeout, failOnError, envFilePath, resolvedEnvName)
+	return runRequestPipeline(req, pipelineOpts{
+		EnvDir:      filepath.Dir(filePath),
+		CLIVars:     cliVars,
+		BaseVars:    env.Vars{},
+		RenderOpts:  buildOpts(cfg, raw, quiet, jsonOutput, showHeaders, noPager, colorFlag),
+		Config:      cfg,
+		CLITimeout:  timeout,
+		FailOnError: failOnError,
+		EnvFilePath: envFilePath,
+		EnvName:     resolvedEnvName,
+		ExecOpts: executor.Options{
+			FollowRedirects: resolveFollowRedirects(followRedirects, noFollowRedirects, cfg),
+			Insecure:        insecure,
+		},
+	})
 }

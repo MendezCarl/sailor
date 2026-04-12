@@ -12,20 +12,39 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// AuthConfig is an optional convenience block for constructing authentication
+// headers. When present, the executor translates it into the appropriate
+// Authorization header before sending. An explicit Authorization header in
+// Headers always takes precedence over the auth block.
+type AuthConfig struct {
+	// Type is the auth scheme. Valid values: "bearer", "basic", "apikey".
+	Type string `yaml:"type"`
+	// Token is used for bearer auth: Authorization: Bearer <token>.
+	Token string `yaml:"token,omitempty"`
+	// Username and Password are used for basic auth.
+	Username string `yaml:"username,omitempty"`
+	Password string `yaml:"password,omitempty"`
+	// Key is the value for apikey auth.
+	Key string `yaml:"key,omitempty"`
+	// Header is the header name for apikey auth (default: "Authorization").
+	Header string `yaml:"header,omitempty"`
+}
+
 // Request is the internal representation of an HTTP request.
 // It is populated from a YAML file by LoadFile, and consumed by the executor.
 type Request struct {
 	SchemaVersion int               `yaml:"schema_version"`
 	Name          string            `yaml:"name"`
-	Method  string            `yaml:"method"`
-	URL     string            `yaml:"url"`
-	Headers map[string]string `yaml:"headers"`
-	Params  map[string]string `yaml:"params"`
-	Body    string            `yaml:"body"`
+	Method        string            `yaml:"method"`
+	URL           string            `yaml:"url"`
+	Headers       map[string]string `yaml:"headers"`
+	Params        map[string]string `yaml:"params"`
+	Body          string            `yaml:"body"`
 	// Timeout overrides the global config timeout for this specific request.
 	// Accepts Go duration strings: "30s", "1m", "90s". Empty means use the
 	// global config value.
-	Timeout string `yaml:"timeout,omitempty"`
+	Timeout string      `yaml:"timeout,omitempty"`
+	Auth    *AuthConfig `yaml:"auth,omitempty"`
 }
 
 // Response holds the result of executing a Request.

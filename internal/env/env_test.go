@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/MendezCarl/sailor.git/internal/request"
 )
 
 // --- Interpolate ---
@@ -504,5 +506,122 @@ func TestParseVarFlag_MissingEquals(t *testing.T) {
 	_, _, err := ParseVarFlag("noequalssign")
 	if err == nil {
 		t.Error("expected error for missing =, got nil")
+	}
+}
+
+// ---- applyAuth --------------------------------------------------------------
+
+func makeAuthReq(authType string, extras map[string]string) *request.Request {
+	auth := &request.AuthConfig{Type: authType}
+	for k, v := range extras {
+		switch k {
+		case "token":
+			auth.Token = v
+		case "username":
+			auth.Username = v
+		case "password":
+			auth.Password = v
+		case "key":
+			auth.Key = v
+		case "header":
+			auth.Header = v
+		}
+	}
+	return &request.Request{Method: "GET", URL: "http://example.com", Auth: auth}
+}
+
+func TestApplyAuth_Bearer(t *testing.T) {
+	req := makeAuthReq("bearer", map[string]string{"token": "mytoken"})
+	got, err := Apply(req, Vars{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.Headers["Authorization"] != "Bearer mytoken" {
+		t.Errorf("Authorization: got %q, want %q", got.Headers["Authorization"], "Bearer mytoken")
+	}
+}
+
+func TestApplyAuth_BearerMissingToken(t *testing.T) {
+	req := makeAuthReq("bearer", nil)
+	_, err := Apply(req, Vars{})
+	if err == nil {
+		t.Error("expected error for missing token, got nil")
+	}
+}
+
+func TestApplyAuth_Basic(t *testing.T) {
+	req := makeAuthReq("basic", map[string]string{"username": "alice", "password": "secret"})
+	got, err := Apply(req, Vars{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// base64("alice:secret") = "YWxpY2U6c2VjcmV0"
+	want := "Basic YWxpY2U6c2VjcmV0"
+	if got.Headers["Authorization"] != want {
+		t.Errorf("Authorization: got %q, want %q", got.Headers["Authorization"], want)
+	}
+}
+
+func TestApplyAuth_APIKey_DefaultHeader(t *testing.T) {
+	req := makeAuthReq("apikey", map[string]string{"key": "abc123"})
+	got, err := Apply(req, Vars{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.Headers["Authorization"] != "abc123" {
+		t.Errorf("Authorization: got %q, want %q", got.Headers["Authorization"], "abc123")
+	}
+}
+
+func TestApplyAuth_APIKey_CustomHeader(t *testing.T) {
+	req := makeAuthReq("apikey", map[string]string{"key": "abc123", "header": "X-Api-Key"})
+	got, err := Apply(req, Vars{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.Headers["X-Api-Key"] != "abc123" {
+		t.Errorf("X-Api-Key: got %q, want %q", got.Headers["X-Api-Key"], "abc123")
+	}
+}
+
+func TestApplyAuth_ExistingHeaderWins(t *testing.T) {
+	req := makeAuthReq("bearer", map[string]string{"token": "newtoken"})
+	req.Headers = map[string]string{"Authorization": "Bearer existingtoken"}
+	got, err := Apply(req, Vars{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.Headers["Authorization"] != "Bearer existingtoken" {
+		t.Errorf("Authorization: got %q, want existing header to win", got.Headers["Authorization"])
+	}
+}
+
+func TestApplyAuth_UnknownType(t *testing.T) {
+	req := makeAuthReq("oauth2", nil)
+	_, err := Apply(req, Vars{})
+	if err == nil {
+		t.Error("expected error for unknown auth type, got nil")
+	}
+}
+
+func TestApplyAuth_VariableInterpolation(t *testing.T) {
+	req := makeAuthReq("bearer", map[string]string{"token": "${my_token}"})
+	got, err := Apply(req, Vars{"my_token": "resolved123"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.Headers["Authorization"] != "Bearer resolved123" {
+		t.Errorf("Authorization: got %q, want %q", got.Headers["Authorization"], "Bearer resolved123")
+	}
+}
+
+func TestApplyAuth_NoAuth(t *testing.T) {
+	req := &request.Request{Method: "GET", URL: "http://example.com"}
+	got, err := Apply(req, Vars{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(got.Headers) != 0 {
+		t.Errorf("expected no headers, got %v", got.Headers)
 	}
 }

@@ -78,6 +78,11 @@ type Config struct {
 	// Zero means no timeout (http.DefaultClient behaviour).
 	Timeout Duration `yaml:"timeout"`
 
+	// FollowRedirects controls whether 3xx redirects are followed.
+	// nil means "use the default" (true). *bool is used so that an explicit
+	// false in a config file is distinguishable from "not set" during merging.
+	FollowRedirects *bool `yaml:"follow_redirects"`
+
 	// DefaultCollection is a path to a collection file used by `apitool run`
 	// when --collection is not provided. Takes precedence over the .apitool/
 	// directory search.
@@ -92,8 +97,10 @@ type Config struct {
 
 // Defaults returns a Config with all fields set to their documented defaults.
 func Defaults() *Config {
+	trueVal := true
 	return &Config{
 		Timeout:           Duration{d: 30 * time.Second},
+		FollowRedirects:   &trueVal,
 		DefaultCollection: "",
 		Output: OutputConfig{
 			Format:      "pretty",
@@ -173,6 +180,10 @@ func merge(base, override *Config) *Config {
 
 	if override.Timeout.d != 0 {
 		out.Timeout = override.Timeout
+	}
+	if override.FollowRedirects != nil {
+		v := *override.FollowRedirects
+		out.FollowRedirects = &v
 	}
 	if override.DefaultCollection != "" {
 		out.DefaultCollection = override.DefaultCollection

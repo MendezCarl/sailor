@@ -9,6 +9,7 @@ import (
 	"github.com/MendezCarl/sailor.git/internal/collection"
 	"github.com/MendezCarl/sailor.git/internal/config"
 	"github.com/MendezCarl/sailor.git/internal/env"
+	"github.com/MendezCarl/sailor.git/internal/executor"
 	"github.com/MendezCarl/sailor.git/internal/render"
 	"github.com/MendezCarl/sailor.git/internal/request"
 )
@@ -19,15 +20,20 @@ func runRun(args []string, cfg *config.Config, cwd string) int {
 	fs.SetOutput(os.Stderr)
 
 	var (
-		collectionFile string
-		timeout        string
-		raw            bool
-		quiet          bool
-		jsonOutput     bool
-		showHeaders    bool
-		failOnError    bool
-		envName        string
-		vars           varFlags
+		collectionFile    string
+		timeout           string
+		raw               bool
+		quiet             bool
+		jsonOutput        bool
+		showHeaders       bool
+		failOnError       bool
+		envName           string
+		colorFlag         string
+		noPager           bool
+		followRedirects   bool
+		noFollowRedirects bool
+		insecure          bool
+		vars              varFlags
 	)
 
 	fs.StringVar(&collectionFile, "collection", "", "path to a collection YAML file")
@@ -40,6 +46,11 @@ func runRun(args []string, cfg *config.Config, cwd string) int {
 	fs.BoolVar(&showHeaders, "i", false, "print response headers (shorthand for --headers)")
 	fs.BoolVar(&failOnError, "fail-on-error", false, "exit 3 on HTTP 4xx/5xx response")
 	fs.StringVar(&envName, "env", "", "environment name to activate (e.g. staging, production)")
+	fs.StringVar(&colorFlag, "color", "", "color output: auto, always, or never (overrides config)")
+	fs.BoolVar(&noPager, "no-pager", false, "disable automatic paging through $PAGER")
+	fs.BoolVar(&followRedirects, "follow-redirects", false, "follow HTTP redirects (overrides config)")
+	fs.BoolVar(&noFollowRedirects, "no-follow-redirects", false, "do not follow HTTP redirects")
+	fs.BoolVar(&insecure, "insecure", false, "skip TLS certificate verification (for self-signed certs)")
 	fs.Var(&vars, "var", "set a variable: key=value (repeatable)")
 
 	fs.Usage = func() {
@@ -57,6 +68,10 @@ func runRun(args []string, cfg *config.Config, cwd string) int {
 		fmt.Fprintln(os.Stderr, "  sailor run \"List Posts\" --raw | jq '.[0].title'")
 		fmt.Fprintln(os.Stderr, "  sailor run \"List Posts\" --json | jq '.status_code'")
 		fmt.Fprintln(os.Stderr, "  sailor run \"List Posts\" --fail-on-error && echo ok")
+		fmt.Fprintln(os.Stderr, "  sailor run \"List Posts\" --color never")
+		fmt.Fprintln(os.Stderr, "  sailor run \"List Posts\" --no-pager")
+		fmt.Fprintln(os.Stderr, "  sailor run \"List Posts\" --no-follow-redirects")
+		fmt.Fprintln(os.Stderr, "  sailor run \"List Posts\" --insecure")
 		fmt.Fprintln(os.Stderr)
 		fmt.Fprintln(os.Stderr, "Without --collection, searches .apitool/collections/*.yaml in the current directory.")
 	}
@@ -98,7 +113,7 @@ func runRun(args []string, cfg *config.Config, cwd string) int {
 		return exitToolError
 	}
 
-	opts := buildOpts(cfg, raw, quiet, jsonOutput, showHeaders)
+	opts := buildOpts(cfg, raw, quiet, jsonOutput, showHeaders, noPager, colorFlag)
 
 	// Resolve the collection file: CLI flag > config default_collection > directory search.
 	if collectionFile == "" {
@@ -147,12 +162,26 @@ func runRun(args []string, cfg *config.Config, cwd string) int {
 	}
 	envFilePath, resolvedEnvName := env.ResolveEnvFile(cwd, envName)
 
-	return execRequest(req, envDir, cliVars, baseVars, opts, cfg, timeout, failOnError, envFilePath, resolvedEnvName)
+	return runRequestPipeline(req, pipelineOpts{
+		EnvDir:      envDir,
+		CLIVars:     cliVars,
+		BaseVars:    baseVars,
+		RenderOpts:  opts,
+		Config:      cfg,
+		CLITimeout:  timeout,
+		FailOnError: failOnError,
+		EnvFilePath: envFilePath,
+		EnvName:     resolvedEnvName,
+		ExecOpts: executor.Options{
+			FollowRedirects: resolveFollowRedirects(followRedirects, noFollowRedirects, cfg),
+			Insecure:        insecure,
+		},
+	})
 }
 
 // buildOpts constructs render.Options from the merged config and CLI flags.
 // CLI flags always override config values. --raw overrides --json.
-func buildOpts(cfg *config.Config, raw, quiet, jsonOutput, showHeaders bool) render.Options {
+func buildOpts(cfg *config.Config, raw, quiet, jsonOutput, showHeaders, noPager bool, color string) render.Options {
 	opts := render.Options{
 		Format:      cfg.Output.Format,
 		Color:       cfg.Output.Color,
@@ -169,6 +198,13 @@ func buildOpts(cfg *config.Config, raw, quiet, jsonOutput, showHeaders bool) ren
 	}
 	if showHeaders {
 		opts.ShowHeaders = true
+	}
+	if noPager {
+		opts.NoPager = true
+	}
+	// --color flag overrides the config value when provided.
+	if color != "" {
+		opts.Color = color
 	}
 	return opts
 }

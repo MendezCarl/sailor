@@ -3,6 +3,7 @@
 package executor
 
 import (
+	"crypto/tls"
 	"fmt"
 	"io"
 	"net/http"
@@ -23,6 +24,18 @@ type NetworkError struct {
 func (e *NetworkError) Error() string { return e.Err.Error() }
 func (e *NetworkError) Unwrap() error { return e.Err }
 
+// Options controls transport-level behavior for a single request execution.
+// Zero value is safe to use: redirects are followed and TLS is verified.
+type Options struct {
+	// FollowRedirects controls whether 3xx redirects are followed.
+	// nil means "use the default" (true). &false disables redirect following.
+	FollowRedirects *bool
+
+	// Insecure disables TLS certificate verification when true.
+	// Intended only for development against self-signed certificates.
+	Insecure bool
+}
+
 // Send executes the given Request and returns a Response.
 //
 // A non-nil error means the request could not be sent at all.
@@ -30,7 +43,7 @@ func (e *NetworkError) Unwrap() error { return e.Err }
 // HTTP error status codes (4xx, 5xx) are not errors — they are valid responses.
 //
 // timeout is the maximum time to wait for a response. Zero means no timeout.
-func Send(req *request.Request, timeout time.Duration) (*request.Response, error) {
+func Send(req *request.Request, timeout time.Duration, opts Options) (*request.Response, error) {
 	targetURL, err := buildURL(req.URL, req.Params)
 	if err != nil {
 		return nil, err // bad URL is a tool error, not a network error
@@ -50,9 +63,29 @@ func Send(req *request.Request, timeout time.Duration) (*request.Response, error
 		httpReq.Header.Set(k, v)
 	}
 
-	client := http.DefaultClient
+	// Build transport with optional TLS configuration.
+	var transport http.RoundTripper
+	if opts.Insecure {
+		transport = &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // #nosec G402 -- user-requested via --insecure
+		}
+	}
+
+	// Determine redirect policy: follow by default, disable when requested.
+	followRedirects := opts.FollowRedirects == nil || *opts.FollowRedirects
+	var checkRedirect func(*http.Request, []*http.Request) error
+	if !followRedirects {
+		checkRedirect = func(_ *http.Request, _ []*http.Request) error {
+			return http.ErrUseLastResponse
+		}
+	}
+
+	client := &http.Client{
+		Transport:     transport,
+		CheckRedirect: checkRedirect,
+	}
 	if timeout != 0 {
-		client = &http.Client{Timeout: timeout}
+		client.Timeout = timeout
 	}
 
 	start := time.Now()

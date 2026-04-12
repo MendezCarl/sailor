@@ -117,41 +117,41 @@ Makes the collection workflow practical for day-to-day use.
 
 Polishes the terminal output to a level appropriate for daily use.
 
-- [ ] Colorized status line with response time and size
-- [ ] `--headers` / `-i` flag for showing response headers
-- [ ] `--raw` flag for pipe-friendly output
-- [ ] Long response paging via `$PAGER`
-- [ ] `--no-pager` flag
-- [ ] `--color=auto|always|never` flag
-- [ ] `--fail-on-error` flag for scripting use cases
-- [ ] Non-TTY detection with automatic color and decoration disable
+- [x] Colorized status line with response time and size
+- [x] `--headers` / `-i` flag for showing response headers
+- [x] `--raw` flag for pipe-friendly output
+- [x] Long response paging via `$PAGER`
+- [x] `--no-pager` flag
+- [x] `--color=auto|always|never` flag
+- [x] `--fail-on-error` flag for scripting use cases
+- [x] Non-TTY detection with automatic color and decoration disable
 
 ### v0.5 — Configuration and ergonomics
 
 Rounds out the configuration model and improves day-to-day ergonomics.
 
-- [ ] Global config file (`config.yaml`) fully supported
-- [ ] Project config override fully supported
-- [ ] Config documentation in `docs/architecture.md`
-- [ ] `--timeout` flag and config key
-- [ ] `--follow-redirects` / `--no-follow-redirects`
-- [ ] Request authentication helpers (Bearer, Basic, API key header construction)
-- [ ] `--insecure` flag for self-signed certificates
-- [ ] Consistent, well-documented error messages across all failure modes
+- [x] Global config file (`config.yaml`) fully supported
+- [x] Project config override fully supported
+- [x] Config documentation in `docs/architecture.md`
+- [x] `--timeout` flag and config key
+- [x] `--follow-redirects` / `--no-follow-redirects`
+- [x] Request authentication helpers (Bearer, Basic, API key header construction)
+- [x] `--insecure` flag for self-signed certificates
+- [x] Consistent, well-documented error messages across all failure modes
 
 ### v0.6 — Hardening and cross-platform parity
 
 No new features. Focus entirely on correctness, cross-platform behavior, and test coverage before the push toward v1.0.
 
-- [ ] Full test coverage on the request execution pipeline
-- [ ] Full test coverage on the YAML parser and variable interpolation engine
-- [ ] Full test coverage on the cURL import/export round-trip
-- [ ] Windows-specific terminal color handling verified
-- [ ] Windows path separator handling verified
-- [ ] All exit codes documented and tested
-- [ ] Startup time benchmarked and regression tests in place
-- [ ] No known data-loss or silent-failure bugs
-- [ ] All `--help` output reviewed for accuracy
+- [x] Full test coverage on the request execution pipeline
+- [x] Full test coverage on the YAML parser and variable interpolation engine
+- [x] Full test coverage on the cURL import/export round-trip
+- [x] Windows-specific terminal color handling verified
+- [x] Windows path separator handling verified
+- [x] All exit codes documented and tested
+- [x] Startup time benchmarked and regression tests in place
+- [x] No known data-loss or silent-failure bugs
+- [x] All `--help` output reviewed for accuracy
 
 ---
 

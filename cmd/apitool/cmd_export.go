@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/MendezCarl/sailor.git/internal/collection"
 	"github.com/MendezCarl/sailor.git/internal/curl"
@@ -64,7 +65,7 @@ func runExportCurl(args []string) int {
 	// Extract a positional request name before parsing flags.
 	var requestName string
 	var flagArgs []string
-	if len(args) > 0 && !hasPrefix(args[0], "-") {
+	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
 		requestName = args[0]
 		flagArgs = args[1:]
 	} else {

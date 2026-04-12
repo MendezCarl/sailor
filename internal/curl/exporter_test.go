@@ -175,3 +175,53 @@ func TestRoundTrip_PostJSON(t *testing.T) {
 		t.Errorf("body: %q → %q", req.Body, req2.Body)
 	}
 }
+
+func TestRoundTrip_Headers(t *testing.T) {
+	// Verify parse → export → re-parse preserves request headers.
+	original := `curl https://api.example.com/users -H "Accept: application/json" -H "X-Api-Key: secret"`
+
+	req, _, err := Parse(original)
+	if err != nil {
+		t.Fatalf("Parse error: %v", err)
+	}
+	exported := Export(req)
+
+	req2, _, err := Parse(exported)
+	if err != nil {
+		t.Fatalf("re-Parse error: %v", err)
+	}
+
+	if req.URL != req2.URL {
+		t.Errorf("url: %q → %q", req.URL, req2.URL)
+	}
+	for key, want := range req.Headers {
+		got, ok := req2.Headers[key]
+		if !ok {
+			t.Errorf("header %q missing after round-trip", key)
+			continue
+		}
+		if got != want {
+			t.Errorf("header %q: got %q, want %q", key, got, want)
+		}
+	}
+}
+
+func TestRoundTrip_QueryParams(t *testing.T) {
+	// Verify parse → export → re-parse preserves query parameters in the URL.
+	original := `curl "https://api.example.com/search?q=hello&page=2&limit=10"`
+
+	req, _, err := Parse(original)
+	if err != nil {
+		t.Fatalf("Parse error: %v", err)
+	}
+	exported := Export(req)
+
+	req2, _, err := Parse(exported)
+	if err != nil {
+		t.Fatalf("re-Parse error: %v", err)
+	}
+
+	if req.URL != req2.URL {
+		t.Errorf("url (with query params): got %q, want %q", req2.URL, req.URL)
+	}
+}

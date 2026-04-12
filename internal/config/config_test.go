@@ -333,3 +333,56 @@ func TestMerge_DefaultEnvEmptyKeepsBase(t *testing.T) {
 		t.Errorf("DefaultEnv = %q, want \"development\"", got.DefaultEnv)
 	}
 }
+
+// ---- FollowRedirects --------------------------------------------------------
+
+func TestDefaults_FollowRedirectsIsTrue(t *testing.T) {
+	cfg := Defaults()
+	if cfg.FollowRedirects == nil {
+		t.Fatal("FollowRedirects should not be nil in defaults")
+	}
+	if !*cfg.FollowRedirects {
+		t.Error("FollowRedirects default should be true")
+	}
+}
+
+func TestMerge_FollowRedirectsOverride(t *testing.T) {
+	base := Defaults() // FollowRedirects = &true
+	falseVal := false
+	override := &Config{FollowRedirects: &falseVal}
+
+	got := merge(base, override)
+
+	if got.FollowRedirects == nil || *got.FollowRedirects != false {
+		t.Error("expected FollowRedirects to be overridden to false")
+	}
+}
+
+func TestMerge_FollowRedirectsNilKeepsBase(t *testing.T) {
+	base := Defaults() // FollowRedirects = &true
+	override := &Config{} // FollowRedirects is nil
+
+	got := merge(base, override)
+
+	if got.FollowRedirects == nil || !*got.FollowRedirects {
+		t.Error("expected FollowRedirects to remain true when override is nil")
+	}
+}
+
+func TestLoadFile_FollowRedirectsFalse(t *testing.T) {
+	dir := t.TempDir()
+	path := dir + "/config.yaml"
+	if err := os.WriteFile(path, []byte("follow_redirects: false\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := LoadFile(path)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.FollowRedirects == nil {
+		t.Fatal("FollowRedirects should not be nil after parsing false")
+	}
+	if *cfg.FollowRedirects != false {
+		t.Error("expected FollowRedirects to be false")
+	}
+}

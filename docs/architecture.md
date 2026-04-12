@@ -267,6 +267,27 @@ This section describes what happens between the user pressing enter and output a
 | `2` | Network error (connection refused, DNS failure, timeout) |
 | `3` | HTTP 4xx or 5xx response (only when `--fail-on-error` is set) |
 
+### 6.3 Error Message Conventions
+
+All user-facing error messages follow these rules:
+
+- **Lowercase** — `error: request file not found: users.yaml`, not `Error: Request File Not Found`.
+- **No trailing punctuation** — the message ends on the last word, no period or exclamation mark.
+- **No internal identifiers** — no package names, struct names, or Go error types visible to the user. `error: invalid timeout "abc"` is correct; `config.Duration.UnmarshalYAML: ...` is not.
+- **Output target** — all error and warning messages go to **stderr**. Only the response body goes to stdout.
+- **Format** — errors are prefixed with `error: ` and printed with `fmt.Fprintf(os.Stderr, ...)`. Warnings use `warning: `.
+
+**Common error patterns by exit code:**
+
+| Exit code | Example message | Cause |
+|---|---|---|
+| `1` | `error: request file not found: users.yaml` | File missing |
+| `1` | `error: invalid YAML in request file: ...` | Parse failure |
+| `1` | `error: -f flag is required` | Missing required flag |
+| `1` | `error: auth.token is required for bearer auth` | Invalid auth block |
+| `2` | `error: could not connect: dial tcp ...: connection refused` | Network failure |
+| `2` | `error: could not connect: context deadline exceeded` | Timeout |
+
 ---
 
 ## 7. Local Storage and Config Model
@@ -397,7 +418,6 @@ output:
   color: auto           # auto | always | never
   format: pretty        # pretty | raw | json
   show_headers: false   # show response headers by default
-  pager: auto           # auto | always | never
 ```
 
 ### 8.4 Schema Versioning
@@ -439,6 +459,40 @@ When a named request is referenced (via `sailor run <name>`):
 1. Project-local collection: `.apitool/collections/<name>.yaml`
 2. Global collection: `~/.config/sailor/collections/<name>.yaml`
 3. Error if neither exists
+
+### 9.5 Config Field Reference
+
+Every supported field in `config.yaml` (global or project):
+
+| Key | Type | Default | Valid values | Description |
+|---|---|---|---|---|
+| `schema_version` | int | — | `1` | Optional. When present, must be first. |
+| `timeout` | duration | `"30s"` | Go duration string or integer seconds | Max time to wait for a response. `"0"` disables the timeout. |
+| `follow_redirects` | bool | `true` | `true`, `false` | Whether 3xx redirects are followed automatically. |
+| `default_collection` | string | `""` | File path | Collection file used by `sailor run` when `--collection` is not provided. |
+| `default_env` | string | `""` | Environment name | Environment activated when `--env` is not provided. |
+| `output.format` | string | `"pretty"` | `"pretty"`, `"raw"`, `"json"` | Default response output format. |
+| `output.color` | string | `"auto"` | `"auto"`, `"always"`, `"never"` | ANSI color output. `"auto"` enables color when stdout is a TTY. |
+| `output.show_headers` | bool | `false` | `true`, `false` | Print response headers before body by default. |
+
+**Note:** `--insecure` is intentionally not a config file option. TLS verification bypass must be passed explicitly on each invocation so it cannot be quietly set and forgotten.
+
+**Example global config** (`~/.config/apitool/config.yaml`):
+```yaml
+timeout: 60s
+output:
+  color: always
+  format: pretty
+```
+
+**Example project override** (`.apitool/config.yaml`):
+```yaml
+default_collection: .apitool/collections/main.yaml
+default_env: local
+timeout: 10s
+```
+
+The project config overrides individual keys; unset keys fall back to the global config or built-in defaults.
 
 ### 9.4 Recommended Git Workflow
 
@@ -483,6 +537,8 @@ Response output is composed of distinct layers, each independently controllable:
 Color output uses ANSI escape codes. Color is applied only when stdout is connected to a TTY (`os.Stdout.Fd()` is a terminal). When piping output, color is automatically disabled without requiring a flag.
 
 The `--color` flag overrides this: `--color=always` forces color even in pipes; `--color=never` disables it even in a TTY. The default is `auto`.
+
+**`NO_COLOR` environment variable:** If `NO_COLOR` is set to any non-empty value, ANSI color output is disabled regardless of the `--color` flag or `output.color` config setting. This follows the [no-color.org](https://no-color.org/) convention and ensures correct behavior on Windows terminals (e.g., legacy `cmd.exe`) and CI environments that do not support ANSI sequences. An empty `NO_COLOR=""` does not disable color (spec-compliant: only a non-empty value takes effect).
 
 JSON syntax highlighting uses a small, purpose-built colorizer rather than a heavy third-party library. The required color set is minimal: string values, numeric values, keys, punctuation. A full-featured syntax highlighting library is not warranted for this use case.
 

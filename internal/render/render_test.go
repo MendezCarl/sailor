@@ -3,12 +3,29 @@ package render
 import (
 	"bytes"
 	"encoding/json"
+	"os"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/MendezCarl/sailor.git/internal/request"
 )
+
+// setenv sets an env var for a test and restores it on cleanup.
+func setenv(t *testing.T, key, value string) {
+	t.Helper()
+	old, had := os.LookupEnv(key)
+	if err := os.Setenv(key, value); err != nil {
+		t.Fatalf("setenv %s: %v", key, err)
+	}
+	t.Cleanup(func() {
+		if had {
+			os.Setenv(key, old) //nolint:errcheck
+		} else {
+			os.Unsetenv(key) //nolint:errcheck
+		}
+	})
+}
 
 // ---- helpers ----------------------------------------------------------------
 
@@ -58,6 +75,25 @@ func TestResolveColor_UnknownMode_NonTTY(t *testing.T) {
 	var buf bytes.Buffer
 	if resolveColor("unknown", &buf) {
 		t.Error("expected color=false for unknown mode + non-TTY writer")
+	}
+}
+
+func TestResolveColor_NoColorEnv(t *testing.T) {
+	// NO_COLOR=1 must disable color even when mode is "always".
+	setenv(t, "NO_COLOR", "1")
+	var buf bytes.Buffer
+	if resolveColor("always", &buf) {
+		t.Error("expected color=false when NO_COLOR is set")
+	}
+}
+
+func TestResolveColor_NoColorEnv_EmptyValue(t *testing.T) {
+	// NO_COLOR="" (empty string) must NOT disable color per the spec.
+	setenv(t, "NO_COLOR", "")
+	var buf bytes.Buffer
+	// bytes.Buffer is not a TTY so auto returns false anyway; use "always".
+	if !resolveColor("always", &buf) {
+		t.Error("expected color=true when NO_COLOR is empty")
 	}
 }
 
